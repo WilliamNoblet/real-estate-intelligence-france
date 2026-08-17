@@ -2,7 +2,7 @@
 
 Source vérifiée le 2026-08-16 : Licence Ouverte 2.0, mise à jour semestrielle.
 Fichiers bulk par département : {BASE_URL}/{annee}/departements/{dep}.csv.gz
-Fichiers par commune :         {BASE_URL}/{annee}/communes/{dep}/{insee}.csv.gz
+(granularité retenue pour le pilote ; il existe aussi un {annee}/full.csv.gz national).
 ⚠ DVF exclut les départements 67, 68, 57 et Mayotte (976) (régime du Livre foncier)."""
 from __future__ import annotations
 
@@ -64,7 +64,3 @@ MAX_SURFACE_M2 = 5000.0
 
 def department_csv_url(dep: str, year: int) -> str:
     return f"{BASE_URL}/{year}/departements/{dep}.csv.gz"
-
-
-def commune_csv_url(dep: str, insee: str, year: int) -> str:
-    return f"{BASE_URL}/{year}/communes/{dep}/{insee}.csv.gz"
