@@ -1,0 +1,50 @@
+# Paramètres NON-secrets, versionnés (§144-146). Les secrets vont dans .env.
+# Chaque paramètre important est documenté. Aucun « magic number » codé en dur ailleurs.
+
+pilot:
+  # Département pilote (§138). Configurable. 33 = Gironde (marché dense, hors zones DVF exclues).
+  department: "33"
+
+historisation:
+  # Nombre de vérifications consécutives « absente » avant de passer une annonce en REMOVED (§50).
+  missing_before_removed: 3
+  # Variation de prix minimale (en €) considérée comme un changement significatif.
+  min_price_change_eur: 1
+
+matching:
+  # Seuils de confiance de l'entity resolution (§59).
+  auto_merge_threshold: 0.95
+  review_threshold: 0.85
+  # Tolérance de surface pour considérer deux biens comme comparables (fraction, §55).
+  surface_tolerance_pct: 0.10
+  # Poids initiaux (à calibrer, §58). Doivent sommer à 1.0.
+  weights:
+    geo: 0.30
+    photos: 0.20
+    surface: 0.15
+    land: 0.10
+    rooms: 0.10
+    text: 0.10
+    agency: 0.05
+
+comparables:
+  # Paramètres de recherche des transactions DVF comparables (§62-63).
+  radius_m: 1000            # rayon initial
+  radius_steps_m: [500, 1000, 2000, 5000]   # élargissement progressif en zone peu dense
+  period_months: 24
+  period_steps_months: [12, 24, 36]
+  surface_tolerance_pct: 0.20
+  min_sample: 5             # en dessous : « échantillon insuffisant » (§159)
+
+collection:
+  # Fréquences distinctes discovery / refresh (§33). Débit poli par défaut (§82, §140).
+  refresh_interval_seconds: 86400
+  requests_per_minute: 20
+  concurrency: 1
+  backoff_base_seconds: 5
+
+quality:
+  # Bornes de plausibilité (§76). Seuils configurables.
+  max_surface_m2: 5000
+  max_price_change_ratio: 0.80     # variation > 80 % en une collecte -> quarantaine
+  france_bbox: { min_lon: -5.5, max_lon: 9.8, min_lat: 41.0, max_lat: 51.5 }

@@ -1,0 +1,29 @@
+# Configuration du connecteur Immonot (Phase 5). Aucun code de collecte n'existe encore :
+# ce fichier fixe les CONTRAINTES de collecte responsable, à respecter le jour où on l'implémente.
+# Décision d'audit : LIMITED (voir docs/sources/immonot.md).
+
+source:
+  name: "Immonot"
+  provider: "Notariat Services"
+  domain: "www.immonot.com"
+  enabled: false            # activé seulement après implémentation + revue de la fiche d'audit
+
+access:
+  method: "sitemap"          # canal officiel : sitemap XML, PAS de crawl des pages de recherche
+  sitemap_index: "https://www.immonot.com/sitemap.xml"
+  respect_robots_txt: true
+  # Contraintes « LIMITED » (§31-32, droit sui generis + RGPD) :
+  requests_per_minute: 60    # ~1 req/s max
+  concurrency: 1
+  substantial_extraction: false   # jamais d'extraction d'une part substantielle de la base
+  spoof_user_agent: false         # jamais d'usurpation d'UA
+  collect_personal_data: false    # aucune donnée personnelle de particulier
+
+mapping:
+  # Nomenclature interne (§156) ; le mapping réel des champs sera défini avec le parser.
+  property_types:
+    maison: HOUSE
+    appartement: APARTMENT
+    terrain: LAND
+    immeuble: BUILDING
+    parking: PARKING

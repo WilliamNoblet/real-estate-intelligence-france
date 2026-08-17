@@ -1,0 +1,54 @@
+[project]
+name = "reif"
+version = "0.1.0"
+description = "Observatoire du marché immobilier français — plateforme d'intelligence immobilière (open data + collecte responsable)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy>=2.0.36",
+    "geoalchemy2>=0.16",
+    "alembic>=1.14",
+    "psycopg[binary]>=3.2",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "pyyaml>=6.0",
+    "httpx>=0.27",
+    "selectolax>=0.3.21",
+    "polars>=1.12",
+    "streamlit>=1.39",
+    "pydeck>=0.9",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.7",
+    "pytest>=8.3",
+    "mypy>=1.13",
+    "types-pyyaml>=6.0",
+]
+
+# Application, not a library: uv manages the environment but does not build/install the project.
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["database/alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "W"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra -q"
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+plugins = []
+exclude = ["database/alembic/versions"]

@@ -1,0 +1,11 @@
+# Fins de ligne LF partout (le code tourne dans des conteneurs Linux).
+# Évite que des scripts/Makefile en CRLF cassent une fois montés dans un conteneur.
+* text=auto eol=lf
+
+# Binaires : jamais de conversion.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gz binary
+*.parquet binary
+*.dump binary
