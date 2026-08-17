@@ -14,6 +14,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -28,7 +29,8 @@ class TransactionDVF(Base, TimestampMixin):
     __tablename__ = "transaction_dvf"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    id_mutation: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    # Unique : une transaction reconstruite par mutation → upsert idempotent (§80).
+    id_mutation: Mapped[str] = mapped_column(String(40), nullable=False)
     mutation_date: Mapped[dt.date | None] = mapped_column(Date)
     mutation_type: Mapped[str | None] = mapped_column(String(80))
     sale_price: Mapped[float | None] = mapped_column(Numeric(12, 2))  # € — NUMERIC exact (§154)
@@ -57,6 +59,7 @@ class TransactionDVF(Base, TimestampMixin):
     ingestion_batch_id: Mapped[int | None] = mapped_column(ForeignKey("ingestion_batch.id"))
 
     __table_args__ = (
+        UniqueConstraint("id_mutation", name="uq_transaction_dvf_id_mutation"),
         Index("ix_transaction_dvf_insee_date", "insee_code", "mutation_date"),
         Index("ix_transaction_dvf_location", "location", postgresql_using="gist"),
     )

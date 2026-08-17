@@ -11,6 +11,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from backend.app import __version__
+from backend.app.api.dvf import router as dvf_router
 from backend.app.core.db import engine, get_session
 from backend.app.models import DataSource
 
@@ -22,6 +23,8 @@ app = FastAPI(
         "Source de vérité = les snapshots ; les tables agrégées sont des dérivés."
     ),
 )
+
+app.include_router(dvf_router)
 
 
 @app.get("/", tags=["meta"])
