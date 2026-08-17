@@ -50,6 +50,9 @@ format: ## Formate le code (ruff format)
 dvf-import: ## Importe DVF pour un département : make dvf-import DEP=33
 	$(COMPOSE) run --rm worker python -m pipelines.dvf.run --dep $(DEP)
 
+geo-load: ## Charge le référentiel COG (régions/dép/communes) + géolocalise les transactions
+	$(COMPOSE) run --rm worker python -m pipelines.geo.run
+
 collect: ## Lance une passe de collecte d'annonces (discovery + refresh)
 	$(COMPOSE) run --rm worker python -m collectors.run
 

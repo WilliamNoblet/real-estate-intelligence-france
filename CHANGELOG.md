@@ -5,6 +5,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ## [Non publié]
 
+### Ajouté — Phase 3 (géographie & carte)
+- Référentiel officiel COG (`pipelines/geo/cog.py`) : régions / départements / communes depuis
+  `geo.api.gouv.fr`, upsert dans l'ordre des FK ; CLI `python -m pipelines.geo.run` (`make geo-load`).
+- Géolocalisation PostGIS (`pipelines/geo/location.py`) : matérialisation de `transaction_dvf.location`
+  (geography 4326) depuis lat/lon, à l'import et en backfill.
+- API `GET /transactions/nearby` (requête spatiale `ST_DWithin`) + lat/lon dans `GET /transactions`.
+- Dashboard : carte des transactions DVF par commune (pydeck) + médiane/Q1/Q3 du €/m².
+- Tests : transformations COG (pures) + intégration base (géolocalisation + requête spatiale).
+
 ### Ajouté — Phase 2 (import DVF)
 - Pipeline DVF géolocalisées (`pipelines/dvf/`) : téléchargement + SHA256 (`client.py`),
   reconstruction par `id_mutation` avec règles documentées (`reconstruct.py`,

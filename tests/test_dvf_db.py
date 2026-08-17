@@ -62,3 +62,25 @@ def test_load_then_stats(session):
     assert stats["sample_size"] == 1
     assert stats["median_price_per_m2"] == 3666.67
     assert stats["insufficient_sample"] is True  # < min_sample (5)
+
+    # Phase 3 : la géolocalisation PostGIS a été matérialisée au chargement (depuis lat/lon).
+    n_loc = session.execute(
+        text("SELECT count(*) FROM transaction_dvf WHERE location IS NOT NULL")
+    ).scalar_one()
+    assert n_loc >= 1
+
+    # Requête spatiale ST_DWithin : autour de Bordeaux on retrouve 2024-1, pas Libourne (2024-3).
+    near = (
+        session.execute(
+            text(
+                "SELECT id_mutation FROM transaction_dvf "
+                "WHERE ST_DWithin(location, "
+                "ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, :r)"
+            ),
+            {"lon": -0.5792, "lat": 44.8378, "r": 3000},
+        )
+        .scalars()
+        .all()
+    )
+    assert "2024-1" in near
+    assert "2024-3" not in near

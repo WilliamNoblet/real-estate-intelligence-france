@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from backend.app.models import Commune, DataSource, IngestionBatch, TransactionDVF
 from backend.app.models.enums import JobStatus, PropertyType, SourceType
 from pipelines.dvf.source import SOURCE_META
+from pipelines.geo.location import backfill_transaction_locations
 
 _UPDATABLE = [
     "mutation_date",
@@ -157,6 +158,8 @@ def load_transactions(
         )
         session.execute(stmt)
         inserted = len(values)
+        # Matérialise la géolocalisation PostGIS depuis lat/lon (Phase 3).
+        backfill_transaction_locations(session, batch.id)
 
     batch.completed_at = dt.datetime.now(dt.UTC)
     batch.status = JobStatus.SUCCESS

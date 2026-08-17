@@ -6,7 +6,8 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Path, Query
-from sqlalchemy import select
+from geoalchemy2 import Geography
+from sqlalchemy import cast, func, select
 from sqlalchemy.orm import Session
 
 from analytics.dvf_stats import commune_stats
@@ -54,10 +55,55 @@ def list_transactions(
                 "rooms": t.rooms,
                 "city": t.city,
                 "insee_code": t.insee_code,
+                "latitude": float(t.latitude) if t.latitude is not None else None,
+                "longitude": float(t.longitude) if t.longitude is not None else None,
                 "quality_flag": t.quality_flag,
             }
         )
     return {"items": items, "limit": limit, "offset": offset, "count": len(items)}
+
+
+@router.get("/transactions/nearby")
+def transactions_nearby(
+    session: SessionDep,
+    lat: Annotated[float, Query(ge=-90, le=90, description="Latitude WGS-84")],
+    lon: Annotated[float, Query(ge=-180, le=180, description="Longitude WGS-84")],
+    radius_m: int = Query(default=1000, ge=1, le=50000, description="Rayon en mètres"),
+    property_type: PropertyType | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+) -> dict[str, Any]:
+    """Transactions DVF autour d'un point (requête spatiale PostGIS ST_DWithin, §28)."""
+    point = cast(func.ST_SetSRID(func.ST_MakePoint(lon, lat), 4326), Geography)
+    dist = func.ST_Distance(TransactionDVF.location, point).label("dist")
+    stmt = select(TransactionDVF, dist).where(
+        TransactionDVF.location.is_not(None),
+        func.ST_DWithin(TransactionDVF.location, point, radius_m),
+    )
+    if property_type is not None:
+        stmt = stmt.where(TransactionDVF.property_type == property_type)
+    stmt = stmt.order_by(dist).limit(limit)
+
+    items = []
+    for t, distance in session.execute(stmt).all():
+        items.append(
+            {
+                "id_mutation": t.id_mutation,
+                "property_type": t.property_type.value,
+                "sale_price": float(t.sale_price) if t.sale_price is not None else None,
+                "price_per_m2": float(t.price_per_m2) if t.price_per_m2 is not None else None,
+                "surface_m2": float(t.surface_m2) if t.surface_m2 is not None else None,
+                "distance_m": round(float(distance), 1) if distance is not None else None,
+                "latitude": float(t.latitude) if t.latitude is not None else None,
+                "longitude": float(t.longitude) if t.longitude is not None else None,
+                "mutation_date": t.mutation_date.isoformat() if t.mutation_date else None,
+            }
+        )
+    return {
+        "center": {"lat": lat, "lon": lon},
+        "radius_m": radius_m,
+        "count": len(items),
+        "items": items,
+    }
 
 
 @router.get("/markets/{insee_code}")
