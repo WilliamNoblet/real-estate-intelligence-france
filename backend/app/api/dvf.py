@@ -40,7 +40,13 @@ def list_transactions(
         stmt = stmt.where(TransactionDVF.sale_price >= min_price)
     if max_price is not None:
         stmt = stmt.where(TransactionDVF.sale_price <= max_price)
-    stmt = stmt.order_by(TransactionDVF.mutation_date.desc()).limit(limit).offset(offset)
+    # Clé de départage unique (id) : sans elle, la pagination OFFSET est non déterministe
+    # à égalité de mutation_date (doublons/omissions entre pages).
+    stmt = (
+        stmt.order_by(TransactionDVF.mutation_date.desc(), TransactionDVF.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
 
     items = []
     for t in session.execute(stmt).scalars().all():
@@ -81,7 +87,7 @@ def transactions_nearby(
     )
     if property_type is not None:
         stmt = stmt.where(TransactionDVF.property_type == property_type)
-    stmt = stmt.order_by(dist).limit(limit)
+    stmt = stmt.order_by(dist, TransactionDVF.id).limit(limit)
 
     items = []
     for t, distance in session.execute(stmt).all():

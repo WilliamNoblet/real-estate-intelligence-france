@@ -10,6 +10,7 @@ import httpx
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
+from backend.app.core.bulk import chunked, safe_chunk_size
 from backend.app.core.config import settings
 from backend.app.models import Commune, Department, Region
 
@@ -65,39 +66,31 @@ def transform_communes(items: list[dict]) -> list[dict]:
 # --- Chargement (upsert) ---
 
 
-def upsert_regions(session: Session, rows: list[dict]) -> int:
+def _chunked_upsert(session: Session, table, rows: list[dict], update_cols: list[str]) -> int:
+    """Upsert par lots (sous la limite de 65535 paramètres) sur la clé insee_code.
+    ~35 000 communes en un seul INSERT dépasseraient la limite → découpage obligatoire."""
     if not rows:
         return 0
-    stmt = pg_insert(Region.__table__).values(rows)
-    stmt = stmt.on_conflict_do_update(
-        index_elements=["insee_code"], set_={"name": stmt.excluded.name}
-    )
-    session.execute(stmt)
+    for chunk in chunked(rows, safe_chunk_size(len(rows[0]))):
+        stmt = pg_insert(table).values(chunk)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["insee_code"],
+            set_={col: getattr(stmt.excluded, col) for col in update_cols},
+        )
+        session.execute(stmt)
     return len(rows)
+
+
+def upsert_regions(session: Session, rows: list[dict]) -> int:
+    return _chunked_upsert(session, Region.__table__, rows, ["name"])
 
 
 def upsert_departments(session: Session, rows: list[dict]) -> int:
-    if not rows:
-        return 0
-    stmt = pg_insert(Department.__table__).values(rows)
-    stmt = stmt.on_conflict_do_update(
-        index_elements=["insee_code"],
-        set_={"name": stmt.excluded.name, "region_code": stmt.excluded.region_code},
-    )
-    session.execute(stmt)
-    return len(rows)
+    return _chunked_upsert(session, Department.__table__, rows, ["name", "region_code"])
 
 
 def upsert_communes(session: Session, rows: list[dict]) -> int:
-    if not rows:
-        return 0
-    stmt = pg_insert(Commune.__table__).values(rows)
-    stmt = stmt.on_conflict_do_update(
-        index_elements=["insee_code"],
-        set_={"name": stmt.excluded.name, "department_code": stmt.excluded.department_code},
-    )
-    session.execute(stmt)
-    return len(rows)
+    return _chunked_upsert(session, Commune.__table__, rows, ["name", "department_code"])
 
 
 def load_cog(session: Session) -> dict:

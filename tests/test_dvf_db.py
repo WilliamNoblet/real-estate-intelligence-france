@@ -84,3 +84,37 @@ def test_load_then_stats(session):
     )
     assert "2024-1" in near
     assert "2024-3" not in near
+
+
+def test_reimport_refreshes_location_and_counts(session):
+    """Ré-import (nouveau file_hash) avec géoloc corrigée : location recalculée, updates comptés."""
+    import polars as pl
+
+    from pipelines.dvf.load import load_transactions
+    from pipelines.dvf.reconstruct import read_geodvf_csv, reconstruct
+
+    raw = read_geodvf_csv(str(FIXTURE))
+    df = reconstruct(raw, source_year=2024)
+    # Déplace la maison 2024-1 d'environ 1 km au nord (44.8378 -> 44.8478).
+    df = df.with_columns(
+        pl.when(pl.col("id_mutation") == "2024-1")
+        .then(pl.lit(44.8478))
+        .otherwise(pl.col("latitude"))
+        .alias("latitude")
+    )
+
+    result = load_transactions(
+        session, df, source_version="test-33-2024-v2",
+        file_hash="phase2-fixture-hash-v2",  # hash différent => ré-import, pas de skip
+        rows_read=raw.height, rows_rejected=0,
+    )
+    assert result["skipped"] is False
+    # Les 6 mutations existaient déjà -> 6 updates, 0 insert (compteurs corrigés).
+    assert result["rows_updated"] == 6
+    assert result["rows_inserted"] == 0
+
+    # location a bien été recalculée depuis la nouvelle latitude (bug de géométrie figée corrigé).
+    new_lat = session.execute(
+        text("SELECT ST_Y(location::geometry) FROM transaction_dvf WHERE id_mutation = '2024-1'")
+    ).scalar_one()
+    assert round(new_lat, 4) == 44.8478

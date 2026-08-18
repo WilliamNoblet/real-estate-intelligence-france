@@ -80,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
         session.commit()
         job_id = job.id
 
-    totals = {"read": 0, "inserted": 0, "rejected": 0}
+    totals = {"read": 0, "inserted": 0, "updated": 0, "rejected": 0}
     status = JobStatus.SUCCESS
     error: str | None = None
     try:
@@ -95,6 +95,7 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             totals["read"] += res.get("rows_read", 0)
             totals["inserted"] += res.get("rows_inserted", 0)
+            totals["updated"] += res.get("rows_updated", 0)
             totals["rejected"] += res.get("rows_rejected", 0)
     except Exception as exc:  # noqa: BLE001
         status = JobStatus.FAILED
@@ -107,6 +108,7 @@ def main(argv: list[str] | None = None) -> int:
         job.status = status
         job.items_read = totals["read"]
         job.items_inserted = totals["inserted"]
+        job.items_updated = totals["updated"]
         job.items_rejected = totals["rejected"]
         job.error_message = error
         session.commit()

@@ -5,6 +5,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ## [Non publié]
 
+### Ajouté — Phase 5/6 (contrat connecteur & moteur d'historisation)
+- `collectors/base.py` : schéma normalisé `NormalizedListing` (Pydantic) + interface
+  `ListingSourceAdapter` (discover/fetch/parse/normalize/validate). Contract test.
+- `pipelines/listings/history.py` : moteur pur d'historisation (Phase 6) — `payload_hash`,
+  `has_meaningful_change`, `diff_events` (PRICE_DECREASE/INCREASE, DESCRIPTION_CHANGED,
+  PROPERTY_DETAILS_CHANGED), `listing_indicators` (prix initial/actuel/min, baisse cumulée,
+  nb de baisses, durée observée, délai avant 1re baisse). Testé sur l'exemple §47.
+- Le connecteur Immonot (collecte HTTP réelle) reste à brancher (nécessite réseau + base).
+
+### Corrigé — revue adversariale du pipeline DVF/géo
+- **[critique]** upserts DVF et COG découpés en lots (`backend/app/core/bulk.py`) : un `INSERT`
+  unique dépassait la limite de 65535 paramètres de PostgreSQL et faisait planter tout import réel.
+- `transaction_dvf.location` recalculée à chaque (ré)import (`only_missing=False`) : la géométrie
+  ne reste plus figée quand un ré-import corrige lat/lon.
+- Compteurs `rows_inserted` / `rows_updated` désormais exacts (les updates ne sont plus comptés
+  comme des inserts) ; propagés à `job_run.items_updated`.
+- Pagination `/transactions` et `/transactions/nearby` rendue déterministe (tie-breaker `id`).
+
 ### Ajouté — Phase 3 (géographie & carte)
 - Référentiel officiel COG (`pipelines/geo/cog.py`) : régions / départements / communes depuis
   `geo.api.gouv.fr`, upsert dans l'ordre des FK ; CLI `python -m pipelines.geo.run` (`make geo-load`).

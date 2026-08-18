@@ -14,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
+from backend.app.core.bulk import chunked, safe_chunk_size
 from backend.app.models import Commune, DataSource, IngestionBatch, TransactionDVF
 from backend.app.models.enums import JobStatus, PropertyType, SourceType
 from pipelines.dvf.source import SOURCE_META
@@ -76,10 +77,11 @@ def _ensure_communes(session: Session, df: pl.DataFrame) -> None:
     ]
     if not rows:
         return
-    stmt = pg_insert(Commune.__table__).values(rows).on_conflict_do_nothing(
-        index_elements=["insee_code"]
-    )
-    session.execute(stmt)
+    for chunk in chunked(rows, safe_chunk_size(2)):
+        stmt = pg_insert(Commune.__table__).values(chunk).on_conflict_do_nothing(
+            index_elements=["insee_code"]
+        )
+        session.execute(stmt)
 
 
 def _already_imported(session: Session, source_id: int, file_hash: str) -> bool:
@@ -124,7 +126,7 @@ def load_transactions(
 
     _ensure_communes(session, df)
 
-    inserted = 0
+    inserted = updated = 0
     if not df.is_empty():
         values = []
         for d in df.to_dicts():
@@ -150,25 +152,40 @@ def load_transactions(
                     "ingestion_batch_id": batch.id,
                 }
             )
-        stmt = pg_insert(TransactionDVF.__table__).values(values)
-        stmt = stmt.on_conflict_do_update(
-            index_elements=["id_mutation"],
-            set_={col: getattr(stmt.excluded, col) for col in _UPDATABLE}
-            | {"updated_at": func.now()},
-        )
-        session.execute(stmt)
-        inserted = len(values)
-        # Matérialise la géolocalisation PostGIS depuis lat/lon (Phase 3).
-        backfill_transaction_locations(session, batch.id)
+        # Découpage en lots : un INSERT unique dépasserait la limite de 65535 paramètres
+        # de PostgreSQL sur un vrai département (ex. Gironde ≈ 29 000 lignes × 18 colonnes).
+        for chunk in chunked(values, safe_chunk_size(len(values[0]))):
+            ids = [v["id_mutation"] for v in chunk]
+            existing = set(
+                session.execute(
+                    select(TransactionDVF.id_mutation).where(
+                        TransactionDVF.id_mutation.in_(ids)
+                    )
+                ).scalars()
+            )
+            n_updated = sum(1 for i in ids if i in existing)
+            updated += n_updated
+            inserted += len(chunk) - n_updated
+            stmt = pg_insert(TransactionDVF.__table__).values(chunk)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["id_mutation"],
+                set_={col: getattr(stmt.excluded, col) for col in _UPDATABLE}
+                | {"updated_at": func.now()},
+            )
+            session.execute(stmt)
+        # Recalcule location depuis lat/lon (only_missing=False : un ré-import peut la corriger).
+        backfill_transaction_locations(session, batch.id, only_missing=False)
 
     batch.completed_at = dt.datetime.now(dt.UTC)
     batch.status = JobStatus.SUCCESS
     batch.rows_inserted = inserted
+    batch.rows_updated = updated
     session.commit()
     return {
         "skipped": False,
         "batch_id": batch.id,
         "rows_read": rows_read,
         "rows_inserted": inserted,
+        "rows_updated": updated,
         "rows_rejected": rows_rejected,
     }
