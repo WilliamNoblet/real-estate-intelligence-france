@@ -5,6 +5,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ## [Non publié]
 
+### Corrigé — 2ᵉ revue adversariale (historisation / comparables / API annonces / collecte)
+- **[critique]** orchestrateur : `seen` comparait les id de `discover()` (ex. URLs) aux id
+  canoniques normalisés → toutes les annonces pouvaient être marquées absentes à tort. Corrigé
+  (comparaison sur `normalized.external_id`).
+- **[critique]** orchestrateur : ajout de `session.rollback()` + isolation d'erreur sur les deux
+  boucles (une annonce/erreur DB n'interrompt plus toute la passe, §147).
+- **[critique]** comparables : exclusion des transactions au €/m² aberrant (`extreme_ppm2`) qui
+  faussaient médiane/quartiles/écart au marché (§160).
+- `property_type` retiré du `payload_hash` (il n'était ni stocké ni diffé → évite un snapshot fantôme).
+- `NormalizedListing` : arrondi des montants à 2 décimales (aligné sur PostgreSQL Numeric) → plus
+  d'asymétrie stocké-vs-brut dans les diffs.
+- `listing_state` : tie-breaker `id` sur l'ordre des snapshots + `drop_pct` calculé côté Python →
+  cohérence prix courant/initial et baisse entre `/listings` et `/price-drops`.
+
 ### Ajouté — Orchestrateur de collecte (glue Phase 5→6)
 - `collectors/run.py` : `run_collection` — pour un `ListingSourceAdapter`, exécute
   discover → fetch → parse → normalize → validate → `ingest_observation`, et marque absentes

@@ -46,7 +46,7 @@ def session():
 
 # Commune de test isolée (99990) pour ne pas polluer les stats d'autres tests sur la base CI
 # partagée : la requête de comparables est purement spatiale, l'INSEE ne l'affecte pas.
-def _row(id_m, ptype, surface, ppm2, lat, lon, day_iso, insee="99990"):
+def _row(id_m, ptype, surface, ppm2, lat, lon, day_iso, insee="99990", quality_flag=None):
     return {
         "id_mutation": id_m,
         "mutation_date": dt.date.fromisoformat(day_iso),
@@ -64,7 +64,7 @@ def _row(id_m, ptype, surface, ppm2, lat, lon, day_iso, insee="99990"):
         "parcel_id": None,
         "price_per_m2": float(ppm2),
         "source_year": 2026,
-        "quality_flag": None,
+        "quality_flag": quality_flag,
     }
 
 
@@ -81,6 +81,8 @@ def test_find_comparable_sales(session):
         _row("CMP-5", "HOUSE", 300, 3000, 44.841, -0.575, "2026-06-01"),  # surface hors tolérance
         _row("CMP-6", "HOUSE", 105, 4000, 44.841, -0.575, "2018-01-01"),  # trop ancien
         _row("CMP-7", "APARTMENT", 105, 5000, 44.841, -0.575, "2026-06-01"),  # mauvais type
+        # €/m² aberrant (vente entre proches) marqué extreme_ppm2 : doit être exclu (§160).
+        _row("CMP-8", "HOUSE", 105, 1, 44.841, -0.575, "2026-06-01", quality_flag="extreme_ppm2"),
     ]
     df = pl.DataFrame(rows)
     load_transactions(

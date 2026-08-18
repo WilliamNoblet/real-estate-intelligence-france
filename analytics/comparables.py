@@ -87,6 +87,9 @@ def find_comparable_sales(
                 TransactionDVF.surface_m2 <= smax,
                 TransactionDVF.mutation_date >= date_min,
                 func.ST_DWithin(TransactionDVF.location, point, radius),
+                # Exclure les €/m² aberrants (ex. ventes entre proches) qui fausseraient
+                # médiane/quartiles — marqués `extreme_ppm2` à l'ingestion DVF (§160).
+                func.coalesce(TransactionDVF.quality_flag, "").notlike("%extreme_ppm2%"),
             )
             .order_by(dist)
         )

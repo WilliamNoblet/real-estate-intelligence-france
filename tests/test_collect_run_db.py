@@ -17,30 +17,33 @@ from collectors.run import get_or_create_listing_source, run_collection
 
 
 class FakeAdapter(ListingSourceAdapter):
-    """Adaptateur factice : discovery et prix contrôlés, aucune requête réseau."""
+    """Adaptateur factice, sans réseau. `discover()` renvoie des URLs, `normalize()` un
+    identifiant canonique DIFFÉRENT — pour vérifier que le marquage des disparues compare
+    les bons identifiants (sinon tout serait marqué absent à tort)."""
 
     source_name = "fake"
 
-    def __init__(self, ids: list[str], prices: dict[str, float], now: dt.datetime):
-        self.ids = ids
-        self.prices = prices
+    def __init__(self, urls: list[str], price_by_id: dict[str, float], now: dt.datetime):
+        self.urls = urls
+        self.price_by_id = price_by_id
         self.now = now
 
     def discover(self) -> Iterable[str]:
-        return self.ids
+        return self.urls
 
-    def fetch(self, external_id: str) -> str:
-        return external_id
+    def fetch(self, url: str) -> str:
+        return url
 
     def parse(self, payload: str) -> dict:
-        return {"id": payload}
+        return {"url": payload, "id": payload.rsplit("/", 1)[-1]}
 
     def normalize(self, parsed: dict) -> NormalizedListing:
-        eid = parsed["id"]
+        cid = parsed["id"]
         return NormalizedListing(
             source="fake",
-            external_id=eid,
-            price_eur=self.prices[eid],
+            external_id=cid,
+            url=parsed["url"],
+            price_eur=self.price_by_id[cid],
             surface_m2=100,
             property_type=PropertyType.HOUSE,
             observed_at=self.now,
@@ -66,18 +69,21 @@ def test_run_collection_lifecycle(session):
     src = get_or_create_listing_source(session, "fake-collect-src")
     sid = src.id
 
-    # Passe 1 : deux annonces découvertes et ingérées.
+    # Passe 1 : deux annonces découvertes (par URL) et ingérées ; aucune disparue.
     t1 = dt.datetime(2027, 1, 10, tzinfo=dt.UTC)
     stats = run_collection(
-        session, FakeAdapter(["FC-1", "FC-2"], {"FC-1": 400000, "FC-2": 300000}, t1), sid, now=t1
+        session,
+        FakeAdapter(["u/FC-1", "u/FC-2"], {"FC-1": 400000, "FC-2": 300000}, t1),
+        sid,
+        now=t1,
     )
     assert stats["discovered"] == 2
     assert stats["ingested"] == 2
-    assert stats["missing"] == 0
+    assert stats["missing"] == 0  # id URL != id canonique : ne doit PAS tout marquer absent
 
     # Passe 2 : FC-1 baisse, FC-2 disparaît.
     t2 = dt.datetime(2027, 2, 10, tzinfo=dt.UTC)
-    stats = run_collection(session, FakeAdapter(["FC-1"], {"FC-1": 380000}, t2), sid, now=t2)
+    stats = run_collection(session, FakeAdapter(["u/FC-1"], {"FC-1": 380000}, t2), sid, now=t2)
     assert stats["ingested"] == 1
     assert stats["missing"] == 1
 

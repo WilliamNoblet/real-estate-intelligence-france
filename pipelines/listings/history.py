@@ -33,10 +33,6 @@ def _as_dict(data: Any) -> dict:
     raise TypeError(f"attendu dict ou modèle Pydantic, reçu {type(data)!r}")
 
 
-def _enum_value(value: Any) -> Any:
-    return value.value if hasattr(value, "value") else value
-
-
 def normalized_text_hash(text: str | None) -> str | None:
     """Hash d'un texte normalisé (minuscules, sans accents/ponctuation, espaces réduits — §56)."""
     if not text:
@@ -63,7 +59,8 @@ def _significant(data: Any) -> dict:
         "bedrooms": d.get("bedrooms"),
         "energy_rating": d.get("energy_rating"),
         "ghg_rating": d.get("ghg_rating"),
-        "property_type": _enum_value(d.get("property_type")),
+        # property_type n'entre PAS ici : il n'est pas stocké dans le snapshot ni diffé
+        # (c'est un attribut du bien/annonce, pas de l'observation) → pas de snapshot fantôme.
         "title": title,
         # Accepte un description_hash déjà stocké (snapshot) ou le calcule depuis le texte brut.
         "description_hash": d.get("description_hash") or normalized_text_hash(d.get("description")),

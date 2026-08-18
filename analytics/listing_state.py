@@ -27,7 +27,9 @@ def _snapshots_by_listing(session: Session, listing_ids: list[int]) -> dict[int,
             ListingSnapshot.price_eur,
         )
         .where(ListingSnapshot.listing_id.in_(listing_ids))
-        .order_by(ListingSnapshot.observed_at)
+        # Tie-breaker `id` : ordre déterministe à observed_at égal, cohérent avec le SQL de
+        # price_drops (sinon prix courant/initial divergent entre /listings et /price-drops).
+        .order_by(ListingSnapshot.observed_at, ListingSnapshot.id)
     ).all()
     grouped: dict[int, list[dict]] = defaultdict(list)
     for lid, observed_at, price in rows:
@@ -98,16 +100,19 @@ def price_drops(
     params = {"max_gap": -abs(min_drop_pct), "limit": limit, "offset": offset}
     out = []
     for r in session.execute(_PRICE_DROPS_SQL, params).mappings():
+        initial = float(r["initial_price"])
+        current = float(r["current_price"])
         out.append(
             {
                 "listing_id": r["listing_id"],
                 "external_listing_id": r["external_listing_id"],
                 "source_id": r["source_id"],
                 "status": r["status"],
-                "initial_price": float(r["initial_price"]),
-                "current_price": float(r["current_price"]),
+                "initial_price": initial,
+                "current_price": current,
                 "lowest_price": float(r["lowest_price"]),
-                "drop_pct": float(r["drop_pct"]),
+                # Arrondi côté Python (identique à listing_indicators) → cohérence avec /listings.
+                "drop_pct": round((current - initial) / initial * 100, 2),
                 "first_seen_at": _iso(r["first_seen_at"]),
                 "last_seen_at": _iso(r["last_seen_at"]),
             }

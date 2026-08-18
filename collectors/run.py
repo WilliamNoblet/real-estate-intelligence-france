@@ -56,15 +56,19 @@ def run_collection(
     }
     seen: set[str] = set()
     for external_id in discovered:
-        seen.add(external_id)
         try:
             normalized = adapter.normalize(adapter.parse(adapter.fetch(external_id)))
             if not adapter.validate(normalized):
                 stats["invalid"] += 1
                 continue
             ingest_observation(session, normalized, source_id, checked_at=now)
+            # « Vue » par l'identifiant CANONIQUE (external_id du NormalizedListing), qui peut
+            # différer de l'entrée de discover() (ex. URL -> id) : sinon on marquerait à tort
+            # toutes les annonces comme disparues.
+            seen.add(normalized.external_id)
             stats["ingested"] += 1
         except Exception:  # noqa: BLE001 — une annonce en échec ne doit pas arrêter la passe (§147)
+            session.rollback()  # une erreur DB met la session en échec : la réinitialiser
             log.exception("collecte : échec sur l'annonce %s", external_id)
             stats["errors"] += 1
 
@@ -73,9 +77,15 @@ def run_collection(
             select(Listing.external_listing_id).where(Listing.source_id == source_id)
         ).scalars().all()
         for external_id in known:
-            if external_id not in seen:
+            if external_id in seen:
+                continue
+            try:
                 record_missing(session, source_id, external_id, now)
                 stats["missing"] += 1
+            except Exception:  # noqa: BLE001 — isolation : un échec ne stoppe pas le marquage
+                session.rollback()
+                log.exception("collecte : échec du marquage absent de %s", external_id)
+                stats["errors"] += 1
 
     log.info("collecte terminée : %s", stats)
     return stats

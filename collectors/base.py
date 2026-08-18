@@ -7,10 +7,18 @@ from __future__ import annotations
 import datetime as dt
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from decimal import ROUND_HALF_UP, Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from backend.app.models.enums import PropertyType
+
+
+def _round2(value: float | None) -> float | None:
+    """Arrondit à 2 décimales comme PostgreSQL Numeric(_,2) (moitié à l'écart de zéro)."""
+    if value is None:
+        return None
+    return float(Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
 
 class NormalizedListing(BaseModel):
@@ -49,6 +57,13 @@ class NormalizedListing(BaseModel):
 
     # Empreinte perceptuelle des photos (hash, pas l'image — §57).
     photo_fingerprint: str | None = Field(default=None)
+
+    @field_validator("price_eur", "surface_m2", "land_surface_m2", mode="after")
+    @classmethod
+    def _round_amounts(cls, value: float | None) -> float | None:
+        # Aligne les montants sur la précision de stockage (Numeric 2 décimales) pour éviter
+        # une asymétrie stocké-vs-brut lors des diffs d'historisation.
+        return _round2(value)
 
 
 class ListingSourceAdapter(ABC):
