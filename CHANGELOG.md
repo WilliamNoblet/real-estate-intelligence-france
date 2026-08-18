@@ -11,7 +11,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 - `pipelines/listings/history.py` : moteur pur d'historisation (Phase 6) — `payload_hash`,
   `has_meaningful_change`, `diff_events` (PRICE_DECREASE/INCREASE, DESCRIPTION_CHANGED,
   PROPERTY_DETAILS_CHANGED), `listing_indicators` (prix initial/actuel/min, baisse cumulée,
-  nb de baisses, durée observée, délai avant 1re baisse). Testé sur l'exemple §47.
+  nb de baisses, durée observée, délai avant 1re baisse), et `transition` (machine à états
+  ACTIVE/MISSING/REMOVED/REAPPEARED). Testé sur l'exemple §47.
+- `pipelines/listings/ingest.py` : persistance d'une observation → listing + listing_check +
+  (listing_snapshot si changement significatif) + listing_event ; `record_missing` fait avancer
+  la machine à états (REMOVED après N vérifications négatives). Test d'intégration base : cycle
+  complet découverte → 2 baisses → 3 absences (REMOVED) → réapparition.
 - Le connecteur Immonot (collecte HTTP réelle) reste à brancher (nécessite réseau + base).
 
 ### Corrigé — revue adversariale du pipeline DVF/géo

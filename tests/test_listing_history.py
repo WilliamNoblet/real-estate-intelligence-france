@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import datetime as dt
 
-from backend.app.models.enums import EventType
+from backend.app.models.enums import EventType, ListingStatus
 from pipelines.listings.history import (
     compute_payload_hash,
     diff_events,
     has_meaningful_change,
     listing_indicators,
     normalized_text_hash,
+    transition,
 )
 
 
@@ -87,3 +88,20 @@ def test_normalized_text_hash():
     assert normalized_text_hash("Belle Maison !!") == normalized_text_hash("belle   maison")
     assert normalized_text_hash("") is None
     assert normalized_text_hash(None) is None
+
+
+def test_state_machine_missing_to_removed_to_reappeared():
+    # ACTIVE -> MISSING au 1er échec, REMOVED au 3e (seuil=3) ; une absence != vente (§49).
+    assert transition(ListingStatus.ACTIVE, False, 1, 3) == (
+        ListingStatus.MISSING, EventType.LISTING_MISSING
+    )
+    assert transition(ListingStatus.MISSING, False, 2, 3) == (ListingStatus.MISSING, None)
+    assert transition(ListingStatus.MISSING, False, 3, 3) == (
+        ListingStatus.REMOVED, EventType.LISTING_REMOVED
+    )
+    # REMOVED -> REAPPEARED si on la retrouve.
+    assert transition(ListingStatus.REMOVED, True, 0, 3) == (
+        ListingStatus.REAPPEARED, EventType.LISTING_REAPPEARED
+    )
+    # Trouvée et déjà active : reste ACTIVE, sans événement.
+    assert transition(ListingStatus.ACTIVE, True, 0, 3) == (ListingStatus.ACTIVE, None)

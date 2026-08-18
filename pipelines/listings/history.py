@@ -17,7 +17,7 @@ import re
 import unicodedata
 from typing import Any
 
-from backend.app.models.enums import EventType
+from backend.app.models.enums import EventType, ListingStatus
 
 # Champs dont un changement est « significatif » (§40).
 DETAIL_FIELDS = [
@@ -65,7 +65,8 @@ def _significant(data: Any) -> dict:
         "ghg_rating": d.get("ghg_rating"),
         "property_type": _enum_value(d.get("property_type")),
         "title": title,
-        "description_hash": normalized_text_hash(d.get("description")),
+        # Accepte un description_hash déjà stocké (snapshot) ou le calcule depuis le texte brut.
+        "description_hash": d.get("description_hash") or normalized_text_hash(d.get("description")),
         "agency_name": d.get("agency_name"),
     }
 
@@ -186,3 +187,24 @@ def listing_indicators(snapshots: list[dict]) -> dict:
         "observed_days_online": (last_seen - first_seen).days,
         "days_before_first_drop": days_before_first_drop,
     }
+
+
+def transition(
+    current: ListingStatus, found: bool, consecutive_missing: int, threshold: int
+) -> tuple[ListingStatus, EventType | None]:
+    """Machine à états d'une annonce (§50, §157). Renvoie (nouveau_statut, event_type | None).
+
+    Une annonce absente n'est jamais « vendue » : elle passe MISSING puis REMOVED après
+    `threshold` vérifications négatives consécutives (§49-50)."""
+    if found:
+        if current == ListingStatus.REMOVED:
+            return ListingStatus.REAPPEARED, EventType.LISTING_REAPPEARED
+        return ListingStatus.ACTIVE, None
+    # Non trouvée.
+    if consecutive_missing >= threshold:
+        if current != ListingStatus.REMOVED:
+            return ListingStatus.REMOVED, EventType.LISTING_REMOVED
+        return ListingStatus.REMOVED, None
+    if current != ListingStatus.MISSING:
+        return ListingStatus.MISSING, EventType.LISTING_MISSING
+    return ListingStatus.MISSING, None
