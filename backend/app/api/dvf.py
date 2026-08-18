@@ -10,6 +10,7 @@ from geoalchemy2 import Geography
 from sqlalchemy import cast, func, select
 from sqlalchemy.orm import Session
 
+from analytics.comparables import find_comparable_sales
 from analytics.dvf_stats import commune_stats
 from backend.app.core.db import get_session
 from backend.app.models import TransactionDVF
@@ -120,3 +121,23 @@ def market(
 ) -> dict[str, Any]:
     """Statistiques de marché DVF (prix payés) pour une commune (§67, §107)."""
     return commune_stats(session, insee_code, property_type)
+
+
+@router.get("/comparables")
+def comparables(
+    session: SessionDep,
+    property_type: PropertyType,
+    lat: Annotated[float, Query(ge=-90, le=90, description="Latitude WGS-84 du bien")],
+    lon: Annotated[float, Query(ge=-180, le=180, description="Longitude WGS-84 du bien")],
+    surface_m2: Annotated[float, Query(gt=0, description="Surface habitable du bien (m²)")],
+    asking_price_per_m2: float | None = Query(default=None, gt=0),
+) -> dict[str, Any]:
+    """Transactions DVF comparables autour d'un bien + écart au marché (§62-66, §102)."""
+    return find_comparable_sales(
+        session,
+        lat=lat,
+        lon=lon,
+        property_type=property_type,
+        surface_m2=surface_m2,
+        asking_price_per_m2=asking_price_per_m2,
+    )

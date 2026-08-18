@@ -5,6 +5,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ## [Non publié]
 
+### Ajouté — Phase 9 (comparables DVF)
+- `analytics/comparables.py` : `find_comparable_sales` — transactions payées proches d'un bien
+  (même type, `ST_DWithin`, tolérance de surface, période), avec **élargissement progressif**
+  (rayon puis période) tant que l'échantillon est insuffisant, **stats robustes** (médiane/Q1/Q3/IQR/n)
+  et **écart au marché** formulé prudemment (« écart vs la médiane des comparables », jamais
+  « surévalué de X % », §66).
+- API `GET /comparables?lat=&lon=&property_type=&surface_m2=&asking_price_per_m2=`.
+- Tests : fonctions pures (stats robustes, arithmétique de mois) + intégration base (sélection
+  correcte des comparables, exclusions distance/surface/période/type, écart au marché).
+
 ### Ajouté — Phase 5/6 (contrat connecteur & moteur d'historisation)
 - `collectors/base.py` : schéma normalisé `NormalizedListing` (Pydantic) + interface
   `ListingSourceAdapter` (discover/fetch/parse/normalize/validate). Contract test.
