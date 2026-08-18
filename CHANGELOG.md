@@ -5,6 +5,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ## [Non publié]
 
+### Ajouté — Orchestrateur de collecte (glue Phase 5→6)
+- `collectors/run.py` : `run_collection` — pour un `ListingSourceAdapter`, exécute
+  discover → fetch → parse → normalize → validate → `ingest_observation`, et marque absentes
+  (`record_missing`) les annonces connues non redécouvertes. Générique, testé avec un adaptateur
+  factice (sans réseau). `make collect` (CLI, stub tant qu'aucun connecteur réel n'est activé).
+- Il ne reste plus, pour la collecte réelle, qu'à écrire l'adaptateur Immonot (parse HTML du site).
+
 ### Ajouté — Phase 8 (API de lecture des annonces)
 - `analytics/listing_state.py` : état courant d'une annonce dérivé de ses snapshots
   (prix actuel/initial/min, baisse cumulée, nb de baisses, durée observée) + `price_drops`
