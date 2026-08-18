@@ -5,6 +5,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ## [Non publié]
 
+### Ajouté — Phase 8 (API de lecture des annonces)
+- `analytics/listing_state.py` : état courant d'une annonce dérivé de ses snapshots
+  (prix actuel/initial/min, baisse cumulée, nb de baisses, durée observée) + `price_drops`
+  (annonces triées par plus forte baisse, SQL).
+- API `GET /listings`, `/listings/{id}`, `/listings/{id}/snapshots`, `/listings/{id}/events`,
+  `/listings/{id}/price-history`, `/price-drops` (§107).
+- Dashboard : section « historique d'une annonce » (métriques + graphe de prix Altair).
+- Test d'intégration base : état courant, price-drops et couche HTTP.
+
 ### Ajouté — Phase 9 (comparables DVF)
 - `analytics/comparables.py` : `find_comparable_sales` — transactions payées proches d'un bien
   (même type, `ST_DWithin`, tolérance de surface, période), avec **élargissement progressif**

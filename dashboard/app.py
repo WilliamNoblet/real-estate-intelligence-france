@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import os
 
+import altair as alt
 import httpx
 import pydeck as pdk
 import streamlit as st
@@ -109,7 +110,43 @@ elif insee:
     st.info("Aucune transaction pour cette commune. As-tu lancé `make dvf-import DEP=…` ?")
 
 st.divider()
+
+# --- Historique d'une annonce (prix demandés) ---
+st.subheader("🟠 Historique d'une annonce (prix demandé)")
+listing_id = st.number_input("ID d'annonce", min_value=1, value=1, step=1)
+lstate = api_get(f"/listings/{listing_id}")
+history = api_get(f"/listings/{listing_id}/price-history")
+
+if lstate and "current_price" in lstate:
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Prix actuel", f"{lstate.get('current_price') or 0:,.0f} €".replace(",", " "))
+    c2.metric("Prix initial", f"{lstate.get('initial_price') or 0:,.0f} €".replace(",", " "))
+    drop = lstate.get("total_price_drop_pct")
+    c3.metric("Baisse cumulée", f"{drop:+.2f} %" if drop is not None else "—")
+    c4.metric("Durée observée", f"{lstate.get('observed_days_online') or 0} j")
+    n_drops = lstate.get("price_decrease_count") or 0
+    st.caption(f"Statut : **{lstate.get('status')}** · {n_drops} baisse(s)")
+
+    points = (history or {}).get("points", [])
+    priced = [p for p in points if p.get("price_eur") is not None]
+    if len(priced) >= 2:
+        chart = (
+            alt.Chart(alt.Data(values=priced))
+            .mark_line(point=True, color="#AB531F")
+            .encode(
+                x=alt.X("observed_at:T", title="Observation"),
+                y=alt.Y("price_eur:Q", title="Prix demandé (€)", scale=alt.Scale(zero=False)),
+                tooltip=["observed_at:T", "price_eur:Q"],
+            )
+        )
+        st.altair_chart(chart, use_container_width=True)
+    else:
+        st.caption("Pas encore assez de points pour un graphique (annonce trop récente).")
+else:
+    st.info("Aucune annonce à cet ID. La collecte réelle (Immonot) n'est pas encore branchée.")
+
+st.divider()
 st.caption(
-    "Phases livrées : 0-1 (socle), 2 (import DVF), 3 (géo/carte). "
-    "Prochaines : connecteur d'annonces (Immonot), snapshots & historique de prix."
+    "Phases livrées : socle, import DVF, géo/carte, historisation, comparables. "
+    "Prochaine étape majeure : brancher la collecte réelle d'annonces (Immonot)."
 )
