@@ -44,7 +44,9 @@ def session():
     s.close()
 
 
-def _row(id_m, ptype, surface, ppm2, lat, lon, day_iso, insee="33063"):
+# Commune de test isolée (99990) pour ne pas polluer les stats d'autres tests sur la base CI
+# partagée : la requête de comparables est purement spatiale, l'INSEE ne l'affecte pas.
+def _row(id_m, ptype, surface, ppm2, lat, lon, day_iso, insee="99990"):
     return {
         "id_mutation": id_m,
         "mutation_date": dt.date.fromisoformat(day_iso),
@@ -75,7 +77,7 @@ def test_find_comparable_sales(session):
         _row("CMP-1", "HOUSE", 105, 3500, 44.841, -0.576, "2026-06-01"),
         _row("CMP-2", "HOUSE", 100, 3700, 44.842, -0.574, "2026-05-01"),
         _row("CMP-3", "HOUSE", 110, 3600, 44.843, -0.573, "2026-04-01"),
-        _row("CMP-4", "HOUSE", 105, 9000, 44.900, -0.240, "2026-06-01", insee="33249"),  # trop loin
+        _row("CMP-4", "HOUSE", 105, 9000, 44.900, -0.240, "2026-06-01"),  # trop loin (spatial)
         _row("CMP-5", "HOUSE", 300, 3000, 44.841, -0.575, "2026-06-01"),  # surface hors tolérance
         _row("CMP-6", "HOUSE", 105, 4000, 44.841, -0.575, "2018-01-01"),  # trop ancien
         _row("CMP-7", "APARTMENT", 105, 5000, 44.841, -0.575, "2026-06-01"),  # mauvais type
