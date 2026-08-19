@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fixture synthétique : URLs fictives pour tester le filtrage par département. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://www.immonot.com/immobilier-notaire/detail/A1/achat-maison-a-vendre-33000-testville-gironde.html</loc></url>
+  <url><loc>https://www.immonot.com/immobilier-notaire/detail/A2/achat-appartement-a-vendre-33200-autreville-gironde.html</loc></url>
+  <url><loc>https://www.immonot.com/immobilier-notaire/detail/B1/achat-maison-a-vendre-75001-paris-paris.html</loc></url>
+</urlset>

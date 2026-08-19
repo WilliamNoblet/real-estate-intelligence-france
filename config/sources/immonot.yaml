@@ -1,12 +1,11 @@
-# Configuration du connecteur Immonot (Phase 5). Aucun code de collecte n'existe encore :
-# ce fichier fixe les CONTRAINTES de collecte responsable, à respecter le jour où on l'implémente.
-# Décision d'audit : LIMITED (voir docs/sources/immonot.md).
+# Configuration du connecteur Immonot (implémenté : collectors/immonot/adapter.py).
+# Fixe les CONTRAINTES de collecte responsable. Décision d'audit : LIMITED (docs/sources/immonot.md).
 
 source:
   name: "Immonot"
   provider: "Notariat Services"
   domain: "www.immonot.com"
-  enabled: false            # activé seulement après implémentation + revue de la fiche d'audit
+  enabled: true             # connecteur implémenté + fiche d'audit relue
 
 access:
   method: "sitemap"          # canal officiel : sitemap XML, PAS de crawl des pages de recherche
@@ -15,6 +14,7 @@ access:
   # Contraintes « LIMITED » (§31-32, droit sui generis + RGPD) :
   requests_per_minute: 60    # ~1 req/s max
   concurrency: 1
+  max_listings: 200          # borne par passe (pas d'extraction substantielle de la base)
   substantial_extraction: false   # jamais d'extraction d'une part substantielle de la base
   spoof_user_agent: false         # jamais d'usurpation d'UA
   collect_personal_data: false    # aucune donnée personnelle de particulier

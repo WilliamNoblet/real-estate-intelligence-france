@@ -13,10 +13,12 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.app.core.config import settings
+from backend.app.core.config import load_yaml_config, settings
+from backend.app.core.db import SessionLocal
 from backend.app.models import DataSource, Listing
 from backend.app.models.enums import SourceType
 from collectors.base import ListingSourceAdapter
+from collectors.immonot.adapter import ImmonotAdapter
 from pipelines.listings.ingest import ingest_observation, record_missing
 
 logging.basicConfig(
@@ -92,12 +94,24 @@ def run_collection(
 
 
 def main() -> int:
-    # Aucun connecteur réel n'est encore activé : le premier (Immonot) sera branché après
-    # feu vert et vérification de docs/sources/immonot.md (collecte responsable, LIMITED).
-    log.info(
-        "Aucun connecteur d'annonces activé. Immonot (sitemap officiel, débit faible, "
-        "sans donnée personnelle) sera branché après validation — voir docs/sources/immonot.md."
+    """Lance une passe de collecte du connecteur Immonot (si activé en config)."""
+    src_cfg = load_yaml_config("sources/immonot")
+    if not src_cfg.get("source", {}).get("enabled"):
+        log.info("Connecteur Immonot désactivé (config/sources/immonot.yaml).")
+        return 0
+
+    access = src_cfg.get("access", {})
+    department = str(load_yaml_config("default").get("pilot", {}).get("department", "33"))
+    rpm = float(access.get("requests_per_minute", 60)) or 60.0
+    adapter = ImmonotAdapter(
+        department=department,
+        max_listings=int(access.get("max_listings", 200)),
+        rate_delay=60.0 / rpm,
     )
+    with SessionLocal() as session:
+        source = get_or_create_listing_source(session, adapter.source_name)
+        stats = run_collection(session, adapter, source.id)
+    log.info("Collecte Immonot terminée (dept=%s) : %s", department, stats)
     return 0
 
 

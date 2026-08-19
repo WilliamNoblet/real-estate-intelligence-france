@@ -5,6 +5,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ## [Non publié]
 
+### Ajouté — Connecteur Immonot (Phase 5, collecte réelle)
+- `collectors/immonot/adapter.py` : discovery via sitemap officiel (filtré par département,
+  borné), parsing des balises **OpenGraph** (rendu serveur, pas de JS) → type/ville/CP/pièces/
+  surface/prix + identifiant stable. Branché sur l'orchestrateur ; `make collect` l'exécute.
+- Contraintes LIMITED respectées : sitemap-only, ~1 req/s, user-agent honnête, pas de donnée
+  personnelle, pas d'extraction substantielle. DPE non scrapé (enrichi via ADEME plus tard).
+- Tests purs (parser + helpers) sur fixtures **synthétiques** (aucune donnée réelle). `enabled: true`.
+
 ### Corrigé — 2ᵉ revue adversariale (historisation / comparables / API annonces / collecte)
 - **[critique]** orchestrateur : `seen` comparait les id de `discover()` (ex. URLs) aux id
   canoniques normalisés → toutes les annonces pouvaient être marquées absentes à tort. Corrigé

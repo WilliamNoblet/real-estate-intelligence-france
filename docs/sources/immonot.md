@@ -1,7 +1,7 @@
 # Fiche d'audit — Immonot
 
 > Vérifié le **2026-08-16**. Décision : **LIMITED**. Connecteur retenu comme **premier** (Phase 5).
-> Cette fiche précède le code (§31). Le connecteur reste désactivé (`config/sources/immonot.yaml : enabled=false`) tant qu'il n'est pas implémenté et cette fiche relue.
+> **Implémenté** : `collectors/immonot/adapter.py` (activé dans `config/sources/immonot.yaml`).
 
 | Critère | Constat |
 |---|---|
@@ -33,3 +33,17 @@
 ## Pourquoi en premier ?
 
 Le plus propre juridiquement et techniquement (robots permissif, flux officiel frais, sans anti-bot), et données majoritairement professionnelles → moindre enjeu RGPD. PAP (annonces de particuliers) viendra ensuite pour la richesse « donnée primaire ».
+
+## Implémentation (2026-08-18)
+
+- **Discovery** : sitemaps de détail (`annonce_detail_ancien/*`, `annonce_detail_neuf/*`) listés dans
+  `sitemap.xml`. Filtrage par département (préfixe de code postal du slug), borne `max_listings` par passe.
+- **Parsing** : balises **OpenGraph** rendues côté serveur (aucun JavaScript requis).
+  `og:title` = « {Type} à vendre {Ville} ({CP}) {Dépt} {N} pièces {S} m² {Prix} € » → type, ville,
+  code postal, pièces, surface, prix. `og:url` → identifiant stable. `og:description` → description.
+- **DPE non scrapé** : l'étiquette énergie sera enrichie plus tard via l'open data ADEME
+  (rapprochement par adresse + surface), pas extraite du site.
+- **Débit** : ~1 req/s (`requests_per_minute: 60`), user-agent honnête, aucune donnée personnelle.
+- Fixtures de test **synthétiques** (`tests/fixtures/immonot/`) : aucune donnée réelle reproduite.
+- Lancement : `make collect` → `python -m collectors.run` (nécessite la base ; passe par
+  l'orchestrateur `run_collection`).
