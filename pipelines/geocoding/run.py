@@ -20,6 +20,7 @@ logging.basicConfig(
 log = logging.getLogger("reif.geocode")
 
 # Annonces sans localisation + ville/CP de leur dernier snapshot.
+# Le filtre source (optionnel) permet de scoper (tests, ou collecte par source).
 _PENDING_SQL = text(
     """
 SELECT l.id AS listing_id, s.city, s.postal_code
@@ -31,7 +32,9 @@ JOIN LATERAL (
     ORDER BY observed_at DESC, id DESC
     LIMIT 1
 ) s ON TRUE
-WHERE l.location IS NULL AND s.postal_code IS NOT NULL
+WHERE l.location IS NULL
+  AND s.postal_code IS NOT NULL
+  AND (:source_id IS NULL OR l.source_id = :source_id)
 LIMIT :lim
 """
 )
@@ -55,13 +58,15 @@ def geocode_pending(
     session: Session | None = None,
     geocoder: Callable[[str | None, str | None], dict | None] | None = None,
     limit: int = 1000,
+    source_id: int | None = None,
 ) -> int:
-    """Géocode les annonces en attente. Renvoie le nombre d'annonces géolocalisées."""
+    """Géocode les annonces en attente (optionnellement d'une seule source).
+    Renvoie le nombre d'annonces géolocalisées."""
     geocoder = geocoder or geocode_place
     owns = session is None
     session = session or SessionLocal()
     try:
-        pending = session.execute(_PENDING_SQL, {"lim": limit}).all()
+        pending = session.execute(_PENDING_SQL, {"lim": limit, "source_id": source_id}).all()
         geocoded = 0
         for listing_id, city, postcode in pending:
             result = geocoder(city, postcode)

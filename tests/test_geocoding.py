@@ -74,7 +74,7 @@ def test_geocode_pending_enriches_listing(session):
         assert city == "Bordeaux" and postcode == "33000"
         return {"latitude": 44.8519, "longitude": -0.5879, "insee_code": "33063", "score": 0.96}
 
-    n = geocode_pending(session, geocoder=fake_geocoder, limit=100)
+    n = geocode_pending(session, geocoder=fake_geocoder, limit=100, source_id=src.id)
     assert n >= 1
 
     row = session.execute(
