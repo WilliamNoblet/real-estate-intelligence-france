@@ -14,6 +14,7 @@ from analytics.listing_state import list_listing_states, listing_state, price_dr
 from backend.app.core.db import get_session
 from backend.app.models import Listing, ListingEvent, ListingSnapshot
 from backend.app.models.enums import ListingStatus
+from matching.dvf_reconciliation import find_dvf_candidates
 
 router = APIRouter(tags=["listings"])
 
@@ -131,6 +132,22 @@ def listing_events(session: SessionDep, listing_id: Annotated[int, Path()]) -> d
         for e in session.execute(stmt).scalars().all()
     ]
     return {"listing_id": listing_id, "items": items}
+
+
+@router.get("/listings/{listing_id}/dvf-candidates")
+def listing_dvf_candidates(
+    session: SessionDep,
+    listing_id: Annotated[int, Path()],
+    min_confidence: float = Query(default=0.5, ge=0, le=1),
+) -> dict[str, Any]:
+    """Transactions DVF potentiellement correspondantes (probabiliste, §61)."""
+    _get_or_404(session, listing_id)
+    candidates = find_dvf_candidates(session, listing_id, min_confidence=min_confidence)
+    return {
+        "listing_id": listing_id,
+        "note": "Correspondances PROBABILISTES (confiance), jamais une certitude (§61, §66).",
+        "candidates": candidates,
+    }
 
 
 @router.get("/price-drops")

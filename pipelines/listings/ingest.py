@@ -145,6 +145,7 @@ def ingest_observation(
             external_listing_id=normalized.external_id,
             canonical_url=normalized.url,
             status=ListingStatus.ACTIVE,
+            property_type=normalized.property_type,
             first_seen_at=normalized.observed_at,
             last_seen_at=normalized.observed_at,
             last_checked_at=checked_at,

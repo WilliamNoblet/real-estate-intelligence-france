@@ -5,6 +5,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ## [Non publié]
 
+### Ajouté — Rapprochement annonce ↔ DVF (§61, §198)
+- `matching/dvf_reconciliation.py` : `score_dvf_match` (scoring PUR : type éliminatoire, commune,
+  surface, chronologie mutation/retrait, plausibilité de prix) + `find_dvf_candidates` (candidats
+  DVF triés par confiance, persistables dans `dvf_match_candidate`). Toujours PROBABILISTE, jamais
+  « vendue à X » (§66).
+- `property_type` ajouté sur `listing` (migration `0005`, renseigné à l'ingestion, exposé par l'API).
+- API `GET /listings/{id}/dvf-candidates`.
+- Tests : scoring pur (match fort, type éliminatoire, chronologie) + intégration base.
+
 ### Ajouté — Géocodage des annonces (§29)
 - Colonnes géo sur `listing` (latitude/longitude/location/insee_code/geocoded_at/geocoding_score),
   migration `0004`.

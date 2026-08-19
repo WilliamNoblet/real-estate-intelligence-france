@@ -74,6 +74,11 @@ class Listing(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
+    property_type: Mapped[PropertyType] = mapped_column(
+        Enum(PropertyType, native_enum=False, length=20),
+        default=PropertyType.UNKNOWN,
+        nullable=False,
+    )
     # Distinguer la date de publication fournie par la source de notre 1re observation (§48).
     source_publication_date: Mapped[dt.date | None] = mapped_column(Date)
     first_seen_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), index=True)

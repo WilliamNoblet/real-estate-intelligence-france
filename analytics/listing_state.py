@@ -45,6 +45,8 @@ def _state(listing: Listing, indicators: dict) -> dict:
         "source_id": listing.source_id,
         "external_listing_id": listing.external_listing_id,
         "status": listing.status.value,
+        "property_type": listing.property_type.value,
+        "insee_code": listing.insee_code,
         "canonical_url": listing.canonical_url,
         "first_seen_at": _iso(listing.first_seen_at),
         "last_seen_at": _iso(listing.last_seen_at),
