@@ -1,0 +1,17 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-0.587877, 44.851895] },
+      "properties": {
+        "label": "Bordeaux",
+        "score": 0.96091,
+        "citycode": "33063",
+        "city": "Bordeaux",
+        "postcode": "33000",
+        "type": "municipality"
+      }
+    }
+  ]
+}

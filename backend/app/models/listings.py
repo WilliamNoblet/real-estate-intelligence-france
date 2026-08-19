@@ -84,11 +84,23 @@ class Listing(Base, TimestampMixin):
     )
     parser_version: Mapped[str | None] = mapped_column(String(40))
 
+    # Géolocalisation (§29) : renseignée par l'enrichissement (ville+CP -> insee+coords via IGN).
+    # Précision commune (approximative) : ne jamais présenter comme une adresse certaine.
+    latitude: Mapped[float | None] = mapped_column(Numeric(9, 6))
+    longitude: Mapped[float | None] = mapped_column(Numeric(9, 6))
+    location = mapped_column(
+        Geography(geometry_type="POINT", srid=4326, spatial_index=False), nullable=True
+    )
+    insee_code: Mapped[str | None] = mapped_column(String(5), index=True)
+    geocoded_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    geocoding_score: Mapped[float | None] = mapped_column(Numeric(4, 3))
+
     property: Mapped[Property | None] = relationship(back_populates="listings")
     snapshots: Mapped[list[ListingSnapshot]] = relationship(back_populates="listing")
 
     __table_args__ = (
         UniqueConstraint("source_id", "external_listing_id", name="uq_listing_source_external"),
+        Index("ix_listing_location", "location", postgresql_using="gist"),
     )
 
 

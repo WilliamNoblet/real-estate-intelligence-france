@@ -5,6 +5,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ## [Non publié]
 
+### Ajouté — Géocodage des annonces (§29)
+- Colonnes géo sur `listing` (latitude/longitude/location/insee_code/geocoded_at/geocoding_score),
+  migration `0004`.
+- `pipelines/geocoding/client.py` : client IGN `data.geopf.fr/geocodage` (l'ancienne API BAN est
+  décommissionnée) ; `parse_geocode_response` pur.
+- `pipelines/geocoding/run.py` : `geocode_pending` — géocode les annonces sans position (ville+CP
+  du dernier snapshot -> insee + coordonnées commune). `make geocode` + job scheduler `geocode_listings`.
+- Précision COMMUNE (approximative) : jamais présentée comme une adresse certaine (§29).
+- Tests : parser (fixture) + enrichissement base (géocodeur factice). Client validé en direct.
+
 ### Ajouté — Phase 7 (scheduler)
 - `pipelines/scheduler.py` : automatisation locale via APScheduler, jobs pilotés par
   `config/default.yaml` (`collect_immonot` 1×/jour, `geocode_listings` toutes les 6 h),

@@ -53,6 +53,9 @@ dvf-import: ## Importe DVF pour un département : make dvf-import DEP=33
 geo-load: ## Charge le référentiel COG (régions/dép/communes) + géolocalise les transactions
 	$(COMPOSE) run --rm worker python -m pipelines.geo.run
 
+geocode: ## Géocode les annonces en attente (ville+CP -> insee+coordonnées via IGN)
+	$(COMPOSE) run --rm worker python -m pipelines.geocoding.run
+
 collect: ## Lance une passe de collecte d'annonces (discovery + refresh)
 	$(COMPOSE) run --rm worker python -m collectors.run
 
