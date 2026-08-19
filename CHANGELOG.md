@@ -5,6 +5,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ## [Non publié]
 
+### Ajouté — Analyse régionale DVF hors-base (sans Docker)
+- `analytics/regional.py` : agrégats PURS de prix **payé** au m² (médiane/Q1/Q3 robustes) par
+  département, par an et par commune, sur un DataFrame de transactions déjà reconstruites.
+  Réutilise exactement les règles d'ingestion (exclusion des €/m² aberrants et des non-logements,
+  seuil d'échantillon communal). Registre `REGIONS` (bretagne, gironde…).
+- `scripts/analyse_dvf_regionale.py` : CLI de bout en bout **sans base ni Docker** — télécharge
+  (idempotent) les fichiers geo-dvf, reconstruit, agrège, écrit `data/analysis/<région>.json`
+  (+ `.parquet`). `make analyse-region REGION=bretagne`.
+- Permet de produire de grosses analyses de marché même tant que la stack Docker est indisponible.
+- Tests purs (frame synthétique) : exclusions, médianes robustes, volumes, tops communaux.
+- Validé en réel sur la **Bretagne** (22/29/35/56, 2021-2025) : 451 029 transactions reconstruites,
+  225 555 exploitables au €/m², médiane régionale 2 360 €/m² (Q1 1 667 / Q3 3 254).
+
 ### Corrigé — 3ᵉ revue adversariale (scheduler / géocodage / rapprochement)
 - **[critique]** scheduler : `next_run_time=None` (défaut `run_at_start=false`) mettait tous les jobs
   en PAUSE → le worker tournait sans jamais rien exécuter. Corrigé (kwarg omis hors run_at_start).

@@ -4,11 +4,13 @@
 
 COMPOSE ?= docker compose
 DEP ?= 33
+REGION ?= bretagne
+PY ?= python
 DATE := $(shell date +%Y-%m-%d)
 
 .DEFAULT_GOAL := help
 .PHONY: help up down logs ps build migrate revision downgrade test lint format \
-        dvf-import collect dashboard backup restore shell psql adminer
+        dvf-import analyse-region collect dashboard backup restore shell psql adminer
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -49,6 +51,9 @@ format: ## Formate le code (ruff format)
 
 dvf-import: ## Importe DVF pour un département : make dvf-import DEP=33
 	$(COMPOSE) run --rm worker python -m pipelines.dvf.run --dep $(DEP)
+
+analyse-region: ## Analyse DVF régionale HORS-BASE (sans Docker) : make analyse-region REGION=bretagne
+	$(PY) -m scripts.analyse_dvf_regionale --region $(REGION)
 
 geo-load: ## Charge le référentiel COG (régions/dép/communes) + géolocalise les transactions
 	$(COMPOSE) run --rm worker python -m pipelines.geo.run
