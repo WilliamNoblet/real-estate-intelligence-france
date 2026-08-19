@@ -5,6 +5,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ## [Non publié]
 
+### Ajouté — Détection de vendeur pressé (repérage ventes rapides / successions)
+- `analytics/motivated_seller.py` : `rapid_sale_signal` (fonction PURE) — score ∈ [0,1] de vendeur
+  possiblement pressé à partir de l'historique d'une annonce (ampleur de la baisse cumulée, nombre
+  de baisses successives, rapidité de la 1ʳᵉ baisse), niveau + motifs factuels. `rank_motivated_sellers`
+  pour un futur « top annonces à surveiller ». Seuils calibrables (`RapidSaleConfig`).
+- **Signal PROBABILISTE, jamais une conclusion** (§66) : ne dit jamais « succession/décès » ; renvoie
+  un `disclaimer` rappelant qu'une succession n'est qu'une cause possible parmi d'autres. Aucune
+  donnée personnelle utilisée.
+- S'appuie sur `listing_indicators` (déjà codé) : **s'activera dès que la collecte d'annonces
+  alimentera l'historique** (nécessite Docker + collectes répétées dans le temps). Tests purs inclus.
+
 ### Ajouté — Analyse régionale DVF hors-base (sans Docker)
 - `analytics/regional.py` : agrégats PURS de prix **payé** au m² (médiane/Q1/Q3 robustes) par
   département, par an et par commune, sur un DataFrame de transactions déjà reconstruites.
