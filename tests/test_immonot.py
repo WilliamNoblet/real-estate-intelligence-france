@@ -47,6 +47,14 @@ def test_parse_og_title_land_without_rooms():
     assert f["price_eur"] == 90000.0
 
 
+def test_price_on_request_becomes_none():
+    # 0 € = « prix sur demande » sur Immonot -> prix inconnu (annonce tracée sans prix).
+    f = parse_og_title("Maison à vendre Crésantignes (10320) Aube 6 pièces 102 m² 0 €")
+    assert f["price_eur"] is None
+    assert f["surface_m2"] == 102.0
+    assert f["rooms"] == 6
+
+
 def test_map_property_type():
     assert map_property_type("Maison") == PropertyType.HOUSE
     assert map_property_type("Local commercial") == PropertyType.OTHER

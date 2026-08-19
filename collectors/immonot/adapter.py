@@ -88,6 +88,9 @@ def parse_og_title(title: str | None) -> dict:
     m_price = re.search(r"([\d\s]+)\s*€\s*$", title)
     if m_price:
         out["price_eur"] = _to_number(m_price.group(1))
+    # 0 € = « prix sur demande » sur Immonot -> prix inconnu (on trace l'annonce sans prix).
+    if out["price_eur"] == 0:
+        out["price_eur"] = None
 
     return out
 
