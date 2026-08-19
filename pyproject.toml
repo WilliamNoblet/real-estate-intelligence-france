@@ -20,6 +20,7 @@ dependencies = [
     "polars>=1.12",
     "streamlit>=1.39",
     "pydeck>=0.9",
+    "apscheduler>=3.10",
 ]
 
 [dependency-groups]

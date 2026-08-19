@@ -5,6 +5,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ## [Non publié]
 
+### Ajouté — Phase 7 (scheduler)
+- `pipelines/scheduler.py` : automatisation locale via APScheduler, jobs pilotés par
+  `config/default.yaml` (`collect_immonot` 1×/jour, `geocode_listings` toutes les 6 h),
+  intervalles POLIS (§140). Le worker lance le scheduler ; `scheduled_jobs` testé.
+
 ### Ajouté — Connecteur Immonot (Phase 5, collecte réelle)
 - `collectors/immonot/adapter.py` : discovery via sitemap officiel (filtré par département,
   borné), parsing des balises **OpenGraph** (rendu serveur, pas de JS) → type/ville/CP/pièces/

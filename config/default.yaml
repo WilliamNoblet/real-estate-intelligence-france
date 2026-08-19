@@ -43,6 +43,18 @@ collection:
   concurrency: 1
   backoff_base_seconds: 5
 
+scheduler:
+  # Automatisation locale (Phase 7, APScheduler). Une évolution de prix se mesure en jours (§140).
+  enabled: true
+  run_at_start: false             # ne pas déclencher une collecte au lancement du worker
+  jobs:
+    collect_immonot:
+      enabled: true
+      interval_seconds: 86400     # 1 collecte / jour (débit poli)
+    geocode_listings:
+      enabled: true
+      interval_seconds: 21600     # géocode les annonces en attente toutes les 6 h
+
 quality:
   # Bornes de plausibilité (§76). Seuils configurables.
   max_surface_m2: 5000

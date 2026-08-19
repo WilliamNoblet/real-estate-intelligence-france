@@ -1,8 +1,6 @@
-"""Worker de fond. Phase 1 : simple battement de cœur qui garde le conteneur vivant.
+"""Worker de fond : lance le scheduler (Phase 7, APScheduler) qui automatise la collecte.
 
-Le scheduler réel (discovery + refresh à fréquences distinctes, §33) sera branché en Phase 7
-(APScheduler) ; les pipelines (DVF, collecte) sont lancés à la demande via `make dvf-import` /
-`make collect` en attendant."""
+Les pipelines restent lançables à la main : `make dvf-import`, `make collect`, `make geo-load`."""
 from __future__ import annotations
 
 import logging
@@ -18,16 +16,18 @@ log = logging.getLogger("reif.worker")
 
 
 def main() -> None:
-    log.info(
-        "worker démarré (env=%s). En attente de tâches planifiées (Phase 7).",
-        settings.app_env,
-    )
+    log.info("worker démarré (env=%s).", settings.app_env)
     try:
-        while True:
-            time.sleep(3600)
-            log.debug("worker heartbeat")
-    except KeyboardInterrupt:
+        from pipelines.scheduler import run as run_scheduler
+
+        run_scheduler()  # bloquant tant qu'il existe des jobs planifiés
+    except (KeyboardInterrupt, SystemExit):
         log.info("worker arrêté.")
+        return
+    # Aucun job planifié : garder le conteneur vivant.
+    log.info("worker en veille (aucun job planifié).")
+    while True:
+        time.sleep(3600)
 
 
 if __name__ == "__main__":
