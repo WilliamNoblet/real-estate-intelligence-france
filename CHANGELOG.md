@@ -5,6 +5,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ## [Non publié]
 
+### Corrigé — 3ᵉ revue adversariale (scheduler / géocodage / rapprochement)
+- **[critique]** scheduler : `next_run_time=None` (défaut `run_at_start=false`) mettait tous les jobs
+  en PAUSE → le worker tournait sans jamais rien exécuter. Corrigé (kwarg omis hors run_at_start).
+- scheduler : un job sans `interval_seconds` est ignoré au lieu de crasher le worker (KeyError).
+- rapprochement DVF : le garde de type exclut aussi `UNKNOWN` (deux types inconnus ne valident plus
+  un match ; `find_dvf_candidates` renvoie [] pour une annonce de type inconnu).
+- géocodage : une ville faite d'espaces ne casse plus le repli sur le code postal.
+
 ### Ajouté — Rapprochement annonce ↔ DVF (§61, §198)
 - `matching/dvf_reconciliation.py` : `score_dvf_match` (scoring PUR : type éliminatoire, commune,
   surface, chronologie mutation/retrait, plausibilité de prix) + `find_dvf_candidates` (candidats

@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.models import DVFMatchCandidate, Listing, ListingSnapshot, TransactionDVF
+from backend.app.models.enums import PropertyType
 
 MATCHING_VERSION = "dvf-recon-0.1"
 
@@ -51,9 +52,9 @@ def score_dvf_match(
     Le type est ÉLIMINATOIRE : types différents -> confiance 0."""
     features: dict = {}
 
-    type_ok = listing.get("property_type") is not None and listing.get("property_type") == txn.get(
-        "property_type"
-    )
+    # Type ÉLIMINATOIRE : exclut aussi UNKNOWN (deux types INCONNUS ne valident pas un match).
+    pt = listing.get("property_type")
+    type_ok = pt is not None and pt != PropertyType.UNKNOWN and pt == txn.get("property_type")
     features["type_match"] = bool(type_ok)
     if not type_ok:
         return 0.0, features
@@ -102,7 +103,9 @@ def find_dvf_candidates(
     Nécessite que l'annonce soit géocodée (insee_code). Résultat PROBABILISTE (§61) : ne jamais
     présenter comme certain. Filtre grossier par commune + type, puis scoring fin en Python."""
     listing = session.get(Listing, listing_id)
-    if listing is None or not listing.insee_code:
+    # Nécessite une annonce géocodée (insee) ET un type CONNU (le type inconnu n'autorise pas
+    # un rapprochement fiable — §61).
+    if listing is None or not listing.insee_code or listing.property_type == PropertyType.UNKNOWN:
         return []
 
     snap = session.execute(

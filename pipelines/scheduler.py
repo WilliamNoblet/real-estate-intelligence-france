@@ -8,6 +8,7 @@ import datetime as dt
 import logging
 from collections.abc import Callable
 
+from apscheduler.schedulers.base import BaseScheduler
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
@@ -17,36 +18,47 @@ log = logging.getLogger("reif.scheduler")
 
 
 def scheduled_jobs(config: dict) -> list[dict]:
-    """Spécifications des jobs activés (id + intervalle) depuis la config."""
+    """Spécifications des jobs activés (id + intervalle) depuis la config.
+    Un job sans `interval_seconds` valide est ignoré (jamais de crash du worker)."""
     sched = config.get("scheduler", {})
     if not sched.get("enabled"):
         return []
     jobs = []
     for job_id, spec in (sched.get("jobs") or {}).items():
-        if spec.get("enabled"):
-            jobs.append({"id": job_id, "interval_seconds": int(spec["interval_seconds"])})
+        if not spec.get("enabled"):
+            continue
+        interval = spec.get("interval_seconds")
+        if interval is None:
+            log.warning("job planifié '%s' sans interval_seconds — ignoré", job_id)
+            continue
+        jobs.append({"id": job_id, "interval_seconds": int(interval)})
     return jobs
 
 
 def build_scheduler(
-    callables: dict[str, Callable], config: dict | None = None
-) -> BlockingScheduler:
+    callables: dict[str, Callable],
+    config: dict | None = None,
+    scheduler_factory: type[BaseScheduler] = BlockingScheduler,
+) -> BaseScheduler:
     """Construit (sans démarrer) un scheduler enregistrant les jobs config dont on a le callable."""
     config = config or load_yaml_config("default")
     run_at_start = bool(config.get("scheduler", {}).get("run_at_start"))
-    scheduler = BlockingScheduler(timezone="UTC")
+    scheduler = scheduler_factory(timezone="UTC")
     for job in scheduled_jobs(config):
         func = callables.get(job["id"])
         if func is None:
             log.warning("job planifié '%s' sans callable — ignoré", job["id"])
             continue
+        # ⚠ next_run_time=None METTRAIT le job en PAUSE (jamais exécuté). On ne le passe donc
+        # QUE pour run_at_start ; sinon APScheduler planifie la 1re exécution à now + intervalle.
+        job_kwargs: dict = {"max_instances": 1, "coalesce": True}
+        if run_at_start:
+            job_kwargs["next_run_time"] = dt.datetime.now(dt.UTC)
         scheduler.add_job(
             func,
             IntervalTrigger(seconds=job["interval_seconds"]),
             id=job["id"],
-            next_run_time=dt.datetime.now(dt.UTC) if run_at_start else None,
-            max_instances=1,
-            coalesce=True,
+            **job_kwargs,
         )
     return scheduler
 

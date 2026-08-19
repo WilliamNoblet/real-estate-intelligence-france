@@ -43,6 +43,15 @@ def test_type_is_eliminatory():
     assert feats["type_match"] is False
 
 
+def test_unknown_type_is_not_a_match():
+    # Deux types INCONNUS ne valident pas un rapprochement (§61) même si tout le reste concorde.
+    conf, feats = score_dvf_match(
+        _listing(property_type=PropertyType.UNKNOWN), _txn(property_type=PropertyType.UNKNOWN)
+    )
+    assert conf == 0.0
+    assert feats["type_match"] is False
+
+
 def test_wrong_commune_lowers_confidence():
     high, _ = score_dvf_match(_listing(), _txn())
     low, _ = score_dvf_match(_listing(), _txn(insee_code="33999"))

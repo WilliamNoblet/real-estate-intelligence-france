@@ -32,6 +32,29 @@ def test_parse_geocode_empty():
     assert parse_geocode_response({}) is None
 
 
+def test_geocode_place_whitespace_city_falls_back_to_postcode():
+    from pipelines.geocoding.client import geocode_place
+
+    class _Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"features": []}
+
+    class _Client:
+        def __init__(self):
+            self.last_params = None
+
+        def get(self, url, params=None):
+            self.last_params = params
+            return _Resp()
+
+    client = _Client()
+    geocode_place("  ", "33000", client=client)  # ville faite d'espaces
+    assert client.last_params["q"] == "33000"  # repli sur le code postal
+
+
 @pytest.fixture(scope="module")
 def session():
     if not os.environ.get("DATABASE_URL"):

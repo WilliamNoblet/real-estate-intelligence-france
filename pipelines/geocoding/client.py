@@ -35,7 +35,8 @@ def geocode_place(
     city: str | None, postcode: str | None, client: httpx.Client | None = None
 ) -> dict | None:
     """Géocode une commune (ville + code postal) -> {latitude, longitude, insee_code, score}."""
-    query = (city or postcode or "").strip()
+    # strip AVANT le repli : une ville faite d'espaces ne doit pas bloquer le repli sur le CP.
+    query = (city or "").strip() or (postcode or "").strip()
     if not query:
         return None
     params = {"q": query, "type": "municipality", "limit": 1}
