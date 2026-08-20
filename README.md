@@ -10,8 +10,11 @@ L'actif central du projet est l'**historique horodaté des annonces** (apparitio
 retrait, réapparition, republication), progressivement rapproché des transactions DVF réelles — de
 façon **toujours probabiliste**.
 
-> État : Phases 0 (init) & 1 (base PostGIS) livrées. Le rapport d'architecture & d'audit détaillé se
-> trouve dans l'artifact de conception. Aucun scraper n'est encore actif.
+> État : socle complet — base PostGIS, import DVF, géographie/carte, moteur d'historisation des
+> annonces, connecteur Immonot, géocodage, comparables et rapprochement annonce↔DVF, scheduler,
+> détection de vendeur pressé. Il reste à **peupler la base avec des données réelles** (nécessite
+> Docker). En attendant, l'**analyse DVF fonctionne déjà hors-base** (voir plus bas). Détail complet
+> dans `CHANGELOG.md`.
 
 ## Architecture
 
@@ -53,6 +56,23 @@ Importer la zone pilote (Gironde) — *disponible à partir de la Phase 2* :
 make dvf-import DEP=33
 ```
 
+## Analyse DVF hors-base (sans Docker)
+
+Les transactions **DVF** (prix réellement payés, open data Etalab) s'analysent **sans base ni
+Docker** : téléchargement + reconstruction (mêmes règles que l'ingestion) + agrégats robustes
+(médiane/quartiles du €/m² par département, année et commune).
+
+```bash
+make analyse-region REGION=bretagne          # -> data/analysis/bretagne.json (+ .parquet)
+# périmètre libre :
+python -m scripts.analyse_dvf_regionale --departments 22 29 35 56 --years 2023 2024 2025
+```
+
+Régions prédéfinies : `bretagne`, `gironde`, … (`analytics/regional.REGIONS`). Étude d'exemple :
+[`docs/marche-bretagne-2021-2025.md`](docs/marche-bretagne-2021-2025.md) (451 029 transactions,
+4 départements bretons). Le module `analytics/motivated_seller.py` (détection de vendeur pressé)
+s'activera dès que la collecte d'annonces alimentera l'historique.
+
 ## Commandes (Makefile)
 
 | Commande | Effet |
@@ -63,6 +83,8 @@ make dvf-import DEP=33
 | `make revision m="…"` | Nouvelle migration autogénérée |
 | `make test` / `make lint` | Tests / ruff |
 | `make dvf-import DEP=33` | Import DVF d'un département |
+| `make analyse-region REGION=bretagne` | **Analyse DVF régionale hors-base (sans Docker)** |
+| `make geo-load` / `make geocode` | Référentiel COG / géocodage des annonces |
 | `make collect` | Passe de collecte d'annonces |
 | `make dashboard` | Démarre api + dashboard |
 | `make backup` / `make restore FILE=…` | Sauvegarde / restauration PostgreSQL |
@@ -91,9 +113,11 @@ géocodage BAN (`data.geopf.fr/geocodage`) · INSEE COG 2026 · DPE ADEME. Déta
 - DVF exclut les départements 67, 68, 57 et Mayotte.
 
 ## Roadmap (résumé)
-0 init · 1 base · 2 DVF (Gironde) · 3 géo/carte · 4 audit sources *(fait)* · 5 1er connecteur (Immonot) ·
-6 snapshots/événements · 7 scheduler · 8 dashboard · 9 comparables DVF · 10-14 (2ᵉ source, matching,
-republications, analyses, annonce→DVF). Détail : `CHANGELOG.md` et le rapport d'architecture.
+**Faits** : 0 init · 1 base · 2 DVF · 3 géo/carte · 4 audit sources · 5 connecteur Immonot ·
+6 snapshots/événements · 7 scheduler · 8 dashboard · 9 comparables DVF · rapprochement annonce↔DVF ·
+géocodage · analyse régionale hors-base · détection de vendeur pressé.
+**À venir** : peuplement en données réelles (Docker), 2ᵉ source (PAP), calibration du matching sur
+données réelles, republications, sauvegardes. Détail : `CHANGELOG.md` et le rapport d'architecture.
 
 ## Licence
 Code sous licence MIT (`LICENSE`). Les **données** restent soumises à leurs licences propres
