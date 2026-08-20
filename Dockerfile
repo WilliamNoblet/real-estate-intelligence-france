@@ -1,10 +1,13 @@
 # Image applicative unique, partagée par les services api / worker / dashboard.
 FROM python:3.12-slim
 
+# Le venv vit HORS de /app : les services montent le repo hôte sur /app (bind-mount ./:/app),
+# ce qui recouvrirait un venv placé dans /app (et sous Windows y injecterait un venv Scripts/ inutilisable).
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PATH="/app/.venv/bin:$PATH"
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
 
 # postgresql-client : utilisé par make backup/restore (pg_dump / pg_restore / pg_isready).
 RUN apt-get update \
@@ -24,7 +27,10 @@ RUN uv sync
 # Utilisateur non-privilégié (sécurité, §164).
 RUN useradd --create-home --uid 10001 appuser
 COPY . .
-RUN chown -R appuser:appuser /app
+# /app/data reçoit le volume nommé dvfdata : il doit exister et appartenir à appuser AVANT le montage
+# (un volume nommé neuf hérite de l'appartenance du dossier de l'image) — sinon l'app (uid 10001)
+# ne peut pas y écrire les fichiers DVF téléchargés (Permission denied).
+RUN mkdir -p /app/data && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000 8501

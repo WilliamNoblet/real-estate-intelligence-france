@@ -55,12 +55,20 @@ def transform_departments(items: list[dict]) -> list[dict]:
     ]
 
 
-def transform_communes(items: list[dict]) -> list[dict]:
-    return [
+def transform_communes(
+    items: list[dict], valid_departments: set[str] | None = None
+) -> list[dict]:
+    rows = [
         {"insee_code": c["code"], "name": c["nom"], "department_code": c.get("codeDepartement")}
         for c in items
         if c.get("code")
     ]
+    if valid_departments is not None:
+        # Écarte les communes dont le département n'est pas chargé : les collectivités d'outre-mer
+        # (975 Saint-Pierre-et-Miquelon, 977/978, 986/987/988) sont renvoyées par /communes mais
+        # absentes de /departements → sinon violation de la clé étrangère commune → department.
+        rows = [r for r in rows if r["department_code"] in valid_departments]
+    return rows
 
 
 # --- Chargement (upsert) ---
@@ -96,7 +104,11 @@ def upsert_communes(session: Session, rows: list[dict]) -> int:
 def load_cog(session: Session) -> dict:
     """Charge tout le COG (régions, départements, communes) dans l'ordre des FK."""
     n_reg = upsert_regions(session, transform_regions(fetch_regions()))
-    n_dep = upsert_departments(session, transform_departments(fetch_departments()))
-    n_com = upsert_communes(session, transform_communes(fetch_communes()))
+    dep_rows = transform_departments(fetch_departments())
+    n_dep = upsert_departments(session, dep_rows)
+    # Ne charger que les communes rattachées à un département existant (écarte les COM sans FK).
+    dep_codes = {d["insee_code"] for d in dep_rows}
+    com_rows = transform_communes(fetch_communes(), dep_codes)
+    n_com = upsert_communes(session, com_rows)
     session.commit()
     return {"regions": n_reg, "departments": n_dep, "communes": n_com}

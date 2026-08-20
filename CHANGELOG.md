@@ -5,6 +5,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ## [Non publié]
 
+### Corrigé — mise en service Docker (bugs révélés au premier run réel)
+La stack n'avait jamais tourné (Docker Desktop cassé) ; le premier démarrage réel a révélé
+3 bugs d'infrastructure qu'aucun test ne pouvait attraper :
+- **Dockerfile** : le venv vivait dans `/app/.venv`, mais les services montent le repo hôte
+  (`./:/app`) → le bind-mount **recouvrait** le venv de l'image (et sous Windows y injectait un
+  venv `Scripts/` inutilisable) → `uvicorn: not found`. Corrigé : venv hors de `/app`
+  (`UV_PROJECT_ENVIRONMENT=/opt/venv`).
+- **Dockerfile** : le volume nommé `dvfdata` monté sur `/app/data` appartenait à root, mais l'app
+  tourne en `appuser` (uid 10001) → `Permission denied` à l'écriture des fichiers DVF. Corrigé :
+  `/app/data` créé et attribué à `appuser` dans l'image (le volume neuf hérite de l'appartenance).
+- **`pipelines/geo/cog.py`** : `/communes` renvoie les collectivités d'outre-mer (dépt 975, 977,
+  978, 986-988) absentes de `/departements` → violation de la clé étrangère `commune → department`
+  au chargement du COG. Corrigé : filtrage des communes sur les départements réellement chargés.
+- Vérifié de bout en bout : stack up, migrations (0005), **152 119 transactions DVF réelles** (4
+  départements bretons), COG (34 875 communes), API `/markets` et `/transactions` OK, dashboard OK.
+
 ### Corrigé — 4ᵉ revue adversariale (analyse régionale / reconstruction)
 - **[haut]** `reconstruct` renvoyait, pour un fichier sans aucune vente, un DataFrame **tout-Utf8** ;
   empilé avec des frames pleins (`pl.concat` multi-départements), cela levait `SchemaError` et
