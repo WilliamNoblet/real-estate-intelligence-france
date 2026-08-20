@@ -75,11 +75,15 @@ def by_type(df: pl.DataFrame) -> dict:
 
 
 def _commune_medians(clean: pl.DataFrame, min_sample: int) -> pl.DataFrame:
+    # Identité d'une commune = code INSEE (+ dep). Le libellé `city` n'est PAS une clef de
+    # regroupement (une variation d'orthographe entre millésimes fragmenterait la commune) :
+    # on le porte comme attribut via first().
     return (
-        clean.group_by(["insee_code", "city", "dep"])
+        clean.group_by(["insee_code", "dep"])
         .agg(
             pl.len().alias("n"),
             pl.col("price_per_m2").median().round(0).alias("median_ppm2"),
+            pl.col("city").first().alias("city"),
         )
         .filter(pl.col("n") >= min_sample)
     )
@@ -158,11 +162,21 @@ def regional_summary(
             }
     result["tendance_annuelle"] = trend
 
-    # Tops de communes (échantillon suffisant).
+    # Tops de communes (échantillon suffisant). Départage déterministe (insee_code, clef unique)
+    # car le JSON produit est un livrable : le tri ne doit pas dépendre de l'ordre (non garanti)
+    # de group_by ni du nombre de threads, notamment quand median_ppm2 (arrondi) crée des ex aequo.
     commune = _commune_medians(clean, min_sample)
-    result["top_communes_cheres"] = _rows(commune.sort("median_ppm2", descending=True).head(top_n))
-    result["top_communes_volume"] = _rows(commune.sort("n", descending=True).head(top_n))
-    result["communes_moins_cheres"] = _rows(commune.sort("median_ppm2").head(top_n))
+    result["top_communes_cheres"] = _rows(
+        commune.sort(["median_ppm2", "n", "insee_code"], descending=[True, True, False]).head(top_n)
+    )
+    result["top_communes_volume"] = _rows(
+        commune.sort(["n", "median_ppm2", "insee_code"], descending=[True, True, False]).head(top_n)
+    )
+    result["communes_moins_cheres"] = _rows(
+        commune.sort(["median_ppm2", "n", "insee_code"], descending=[False, True, False]).head(
+            top_n
+        )
+    )
 
     # Qualité / transparence.
     result["qualite"] = {

@@ -5,6 +5,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ## [Non publié]
 
+### Corrigé — 4ᵉ revue adversariale (analyse régionale / reconstruction)
+- **[haut]** `reconstruct` renvoyait, pour un fichier sans aucune vente, un DataFrame **tout-Utf8** ;
+  empilé avec des frames pleins (`pl.concat` multi-départements), cela levait `SchemaError` et
+  faisait planter toute l'analyse. Corrigé : `OUTPUT_SCHEMA` typé + frame vide au bon schéma.
+- **[haut]** `regional._commune_medians` groupait sur `[insee_code, city, dep]` : une variation
+  d'orthographe du nom de commune entre millésimes aurait **fragmenté** la commune (médiane sur un
+  fragment, doublon dans les tops, disparition sous le seuil). Corrigé : regroupement sur le code
+  INSEE seul, libellé porté via `first()`.
+- **[moyen]** Tops de communes **non déterministes** en cas d'ex aequo (tri instable sur sortie de
+  `group_by` + médianes arrondies) → le JSON livré variait d'une exécution à l'autre. Corrigé :
+  départage complet `[median_ppm2, n, insee_code]`.
+- **[moyen]** CLI : une lecture de fichier corrompu/tronqué (hors `try`) stoppait tout le run →
+  désormais le département/année illisible est ignoré. Formatage défensif du résumé quand aucune
+  vente n'est exploitable au €/m² (médiane `None` ne plante plus le `:.0f`).
+- Tests de non-régression ajoutés (frame vide typé & concaténable, dé-fragmentation par INSEE,
+  déterminisme des tops). Résultats Bretagne **inchangés** (aucune variante de nom, tops distincts).
+
 ### Ajouté — Détection de vendeur pressé (repérage ventes rapides / successions)
 - `analytics/motivated_seller.py` : `rapid_sale_signal` (fonction PURE) — score ∈ [0,1] de vendeur
   possiblement pressé à partir de l'historique d'une annonce (ampleur de la baisse cumulée, nombre

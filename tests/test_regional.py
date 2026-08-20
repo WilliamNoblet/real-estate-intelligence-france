@@ -69,3 +69,49 @@ def test_regional_summary():
 
 def test_registry_bretagne():
     assert REGIONS["bretagne"] == ["22", "29", "35", "56"]
+
+
+def test_commune_non_fragmentee_par_orthographe():
+    # Régression : un même code INSEE avec deux orthographes de nom ne doit former qu'UNE commune
+    # (clef = code INSEE, pas le libellé) — sinon médiane sur fragment + doublon dans les tops.
+    from analytics.regional import _commune_medians
+
+    df = pl.DataFrame(
+        {
+            "insee_code": ["35238"] * 24,
+            "city": ["Rennes"] * 12 + ["RENNES"] * 12,
+            "dep": ["35"] * 24,
+            "property_type": ["HOUSE"] * 24,
+            "price_per_m2": [2000.0 + i for i in range(24)],
+        }
+    )
+    cm = _commune_medians(df, 20)
+    assert cm.height == 1  # une seule commune, pas deux fragments de 12
+    assert cm["n"][0] == 24
+
+
+def test_tops_deterministes_sur_egalites():
+    # Régression : à médianes ex aequo, le top doit être STABLE (livrable JSON reproductible),
+    # départagé par insee_code croissant — indépendamment de l'ordre interne de group_by.
+    rows = []
+    for i in range(30):
+        ins = f"35{100 + i:03d}"
+        rows += [
+            {
+                "insee_code": ins, "city": "X", "dep": "35", "year": 2023,
+                "property_type": "HOUSE", "price_per_m2": 2000.0, "quality_flag": None,
+            }
+            for _ in range(25)
+        ]
+    df = pl.DataFrame(rows)
+    runs = [
+        [
+            c["insee"]
+            for c in regional_summary(
+                df, departments=["35"], years=[2023], min_sample=20, top_n=10
+            )["top_communes_cheres"]
+        ]
+        for _ in range(5)
+    ]
+    assert all(r == runs[0] for r in runs)  # identique à chaque exécution
+    assert runs[0] == sorted(runs[0])  # ex aequo départagés par insee croissant

@@ -60,7 +60,11 @@ def build(departments: list[str], years: list[int], download: bool, min_sample: 
             path = _ensure_file(dep, year, download)
             if path is None:
                 continue
-            raw = read_geodvf_csv(str(path))
+            try:
+                raw = read_geodvf_csv(str(path))
+            except Exception as exc:  # noqa: BLE001 — fichier corrompu/tronqué : sauter sans tout stopper
+                print(f"  ! {dep}/{year} illisible ({exc}) — ignoré", file=sys.stderr)
+                continue
             raw_lines += raw.height
             rejected += count_rejected_rows(raw)
             tx = reconstruct(raw, year).with_columns(
@@ -116,11 +120,16 @@ def main(argv: list[str] | None = None) -> None:
     print("\n=== Résumé ===", file=sys.stderr)
     print(f"Transactions reconstruites : {q['transactions_reconstruites']:,}", file=sys.stderr)
     print(f"Exploitables au €/m²       : {q['transactions_exploitables_ppm2']:,}", file=sys.stderr)
-    print(
-        f"Médiane régionale €/m²     : {reg['median']:.0f} "
-        f"(Q1 {reg['q1']:.0f} / Q3 {reg['q3']:.0f})",
-        file=sys.stderr,
-    )
+    if reg["median"] is not None:
+        print(
+            f"Médiane régionale €/m²     : {reg['median']:.0f} "
+            f"(Q1 {reg['q1']:.0f} / Q3 {reg['q3']:.0f})",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            "Médiane régionale €/m²     : n/d (aucune vente exploitable au €/m²)", file=sys.stderr
+        )
     print(f"Écrit : {json_path} + {parquet_path.name}", file=sys.stderr)
 
 

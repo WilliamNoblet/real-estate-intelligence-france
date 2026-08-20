@@ -35,26 +35,29 @@ _DTYPES = {
     "latitude": pl.Float64,
 }
 
-# Colonnes de sortie (alignées sur le modèle transaction_dvf).
-OUTPUT_COLUMNS = [
-    "id_mutation",
-    "mutation_date",
-    "mutation_type",
-    "sale_price",
-    "property_type",
-    "surface_m2",
-    "land_surface_m2",
-    "rooms",
-    "city",
-    "postal_code",
-    "insee_code",
-    "latitude",
-    "longitude",
-    "parcel_id",
-    "price_per_m2",
-    "source_year",
-    "quality_flag",
-]
+# Schéma de sortie TYPÉ (aligné sur le modèle transaction_dvf ET sur les dtypes réellement
+# produits par la reconstruction). Sert aussi à construire un frame vide au bon type : un frame
+# vide all-Utf8 casserait un pl.concat(..., how="vertical") avec des frames non vides (SchemaError).
+OUTPUT_SCHEMA: dict[str, pl.DataType] = {
+    "id_mutation": pl.Utf8,
+    "mutation_date": pl.Date,
+    "mutation_type": pl.Utf8,
+    "sale_price": pl.Float64,
+    "property_type": pl.Utf8,
+    "surface_m2": pl.Float64,
+    "land_surface_m2": pl.Float64,
+    "rooms": pl.Int32,
+    "city": pl.Utf8,
+    "postal_code": pl.Utf8,
+    "insee_code": pl.Utf8,
+    "latitude": pl.Float64,
+    "longitude": pl.Float64,
+    "parcel_id": pl.Utf8,
+    "price_per_m2": pl.Float64,
+    "source_year": pl.Int32,
+    "quality_flag": pl.Utf8,
+}
+OUTPUT_COLUMNS = list(OUTPUT_SCHEMA)
 
 
 def read_geodvf_csv(path: str) -> pl.DataFrame:
@@ -68,7 +71,8 @@ def reconstruct(raw: pl.DataFrame, source_year: int) -> pl.DataFrame:
     # 1) Ne garder que les mutations de vente ; le reste est rejeté.
     sales = raw.filter(pl.col("nature_mutation").is_in(list(SALE_NATURES)))
     if sales.is_empty():
-        return pl.DataFrame(schema={c: pl.Utf8 for c in OUTPUT_COLUMNS})
+        # Frame vide AU BON SCHÉMA (dtypes typés) pour rester concaténable avec des frames pleins.
+        return pl.DataFrame(schema=OUTPUT_SCHEMA)
 
     habitable = pl.col("type_local").is_in(HABITABLE_TYPES)
 

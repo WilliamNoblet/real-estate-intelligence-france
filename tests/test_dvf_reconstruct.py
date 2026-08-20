@@ -25,6 +25,20 @@ def test_only_sales_kept(transactions):
     assert count_rejected_rows(raw) == 1
 
 
+def test_empty_result_is_typed_and_concatenable():
+    # Régression : un fichier sans aucune vente renvoyait un frame tout-Utf8, qui cassait
+    # pl.concat(..., how="vertical") avec des frames pleins (analyse multi-départements).
+    import polars as pl
+
+    raw = read_geodvf_csv(str(FIXTURE))
+    full = reconstruct(raw, source_year=2024)
+    empty = reconstruct(raw.filter(pl.col("nature_mutation") == "__aucune__"), source_year=2024)
+    assert empty.height == 0
+    assert empty.schema == full.schema  # frame vide AU BON schéma typé, pas tout-Utf8
+    # Concat strict (dtypes) : ne doit plus lever SchemaError.
+    assert pl.concat([full, empty], how="vertical").height == full.height
+
+
 def test_valeur_fonciere_not_summed(transactions):
     txns, _ = transactions
     # 2 lignes à 385000 → 385000, PAS 770000 (§26).
