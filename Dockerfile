@@ -1,5 +1,5 @@
 # Image applicative unique, partagée par les services api / worker / dashboard.
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # Le venv vit HORS de /app : les services montent le repo hôte sur /app (bind-mount ./:/app),
 # ce qui recouvrirait un venv placé dans /app (et sous Windows y injecterait un venv Scripts/ inutilisable).
